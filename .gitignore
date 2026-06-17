@@ -1,0 +1,6 @@
+
+# Build artifacts
+*.exe
+etw-trace
+mvk_verify.exe
+build/bin/
