@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,7 +69,7 @@ func (a *App) GetFolders() []FolderInfo {
 		// Read current path from registry.
 		rawPath, err := sys.ReadExpandString(sys.UserShellFoldersKey, f.RegValueName)
 		if err != nil {
-			fi.Status = "default"
+			fi.Status = "unknown"
 			result = append(result, fi)
 			continue
 		}
@@ -91,6 +92,10 @@ func (a *App) GetFolders() []FolderInfo {
 			}
 		} else {
 			fi.Status = "default"
+			// If already on a non-C drive, no need to migrate
+			if len(expanded) >= 2 && expanded[1] == ':' && !strings.EqualFold(expanded[:1], "C") {
+				fi.Status = "not_on_c"
+			}
 		}
 
 		result = append(result, fi)
