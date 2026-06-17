@@ -5,7 +5,7 @@ export interface FolderInfo {
   targetPath: string;
   sizeBytes: number;
   fileCount: number;
-  status: string; // "default" | "migrated" | "junction_broken"
+  status: string; // "default" | "migrated" | "not_on_c" | "junction_broken" | "unknown"
 }
 
 export interface DiskInfo {

@@ -10,6 +10,8 @@ function formatBytes(bytes: number): string {
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   default: { label: '待迁移', color: 'text-text-secondary', bg: 'bg-surface-alt' },
   migrated: { label: '已迁移', color: 'text-success', bg: 'bg-success/10' },
+  not_on_c: { label: '无需迁移', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  unknown: { label: '未知', color: 'text-text-secondary', bg: 'bg-surface-alt' },
   junction_broken: { label: '链接异常', color: 'text-danger', bg: 'bg-danger/10' },
 };
 
