@@ -49,10 +49,9 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	}
 
 	// 0e. Security software detection (informational — logged, not blocking).
+	var detectedAV string
 	if avName := detectSecuritySoftware(); avName != "" {
-		// Log detected AV but don't block the migration.
-		// The caller can use this information to warn the user.
-		_ = avName // future: pass to caller via context or log
+		detectedAV = avName
 	}
 
 	// 1. Source must exist.
@@ -152,6 +151,17 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 			Message: "Target path already exists",
 			Detail:  targetPath,
 			Action:  "Remove or rename the existing folder at the target location",
+		}
+	}
+
+	// 6. Warn about detected security software (informational, non-blocking).
+	if detectedAV != "" {
+		return &MoveKitError{
+			Code:    "SECURITY_SOFTWARE_DETECTED",
+			Message: fmt.Sprintf("检测到安全软件: %s", detectedAV),
+			Detail:  "安全软件可能会干扰 junction 创建或文件操作",
+			Action:  "建议暂时关闭实时防护后再迁移",
+			Warning: detectedAV,
 		}
 	}
 

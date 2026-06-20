@@ -89,8 +89,13 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 
 	// 3. PreCheck.
 	if err := PreCheck(actualSource, driveLetter); err != nil {
-		log.Error("PreCheck failed: %s — %s", err.Code, err.Detail)
-		return err
+		if mkErr, ok := err.(*MoveKitError); ok && mkErr.Code == "SECURITY_SOFTWARE_DETECTED" {
+			log.Warn("检测到安全软件: %s，继续迁移", mkErr.Warning)
+			// Non-blocking: proceed with migration despite AV detection
+		} else {
+			log.Error("PreCheck failed: %s — %s", err.Code, err.Detail)
+			return err
+		}
 	}
 
 	// Check for file conflicts before moving.

@@ -335,11 +335,12 @@ func (a *App) StartMigration(targetDrive string) {
 			err := migrate.Migrate(f.RegValueName, targetDrive, onProgress)
 			if err != nil {
 				errMsg := err.Error()
-				var code, detail, action string
+				var code, detail, action, warning string
 				if mkErr, ok := err.(*migrate.MoveKitError); ok {
 					code = mkErr.Code
 					detail = mkErr.Detail
 					action = mkErr.Action
+					warning = mkErr.Warning
 				}
 				runtime.EventsEmit(a.ctx, "migration:done", map[string]interface{}{
 					"success": false,
@@ -348,6 +349,7 @@ func (a *App) StartMigration(targetDrive string) {
 					"code":    code,
 					"detail":  detail,
 					"action":  action,
+					"warning": warning,
 				})
 				return
 			}
