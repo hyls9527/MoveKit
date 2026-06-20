@@ -68,7 +68,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 	var totalBytes int64
 	filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return nil // intentional: skip files we cannot access during counting
 		}
 		// Skip symlinks
 		if d.Type()&os.ModeSymlink != 0 {
@@ -78,7 +78,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 			totalFiles++
 			if info, err := d.Info(); err == nil {
 				totalBytes += info.Size()
-			}
+			} // d.Info() may fail; skip byte tracking but don't fail counting
 		}
 		return nil
 	})
@@ -122,19 +122,14 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 		}
 
 		filesMoved++
-		fi, _ := d.Info()
+		fi, _ := d.Info() // d.Info() may fail; skip byte tracking but don't fail the move
 		if fi != nil {
 			bytesMoved += fi.Size()
 		}
 
 		// Report progress.
 		if onProgress != nil {
-			percent := 0
-			if totalBytes > 0 {
-				percent = int(bytesMoved * 100 / totalBytes)
-			}
 			onProgress(folder, "moving", filesMoved, totalFiles, bytesMoved, totalBytes)
-			_ = percent // available for future use
 		}
 
 		return nil
@@ -151,7 +146,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 
 	// Clean up empty source directory tree after all files are moved.
 	if err == nil {
-		os.RemoveAll(src)
+		os.RemoveAll(src) // non-critical: empty dirs may remain on error
 	}
 
 	return err
