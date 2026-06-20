@@ -7,7 +7,7 @@ type FolderInfo struct {
 	GUID       string `json:"guid"`
 	SourcePath string `json:"sourcePath"`
 	TargetPath string `json:"targetPath"`
-	SizeBytes  int64  `json:"sizeBytes"`
+	SizeBytes  int64  `json:"sizeBytes"` // -1 means "could not calculate"
 	FileCount  int    `json:"fileCount"`
 	Status     string `json:"status"` // "default" | "migrated" | "junction_broken"
 }
