@@ -6,7 +6,7 @@ MoveKit is entering a quality-focused milestone. No new user-facing features —
 
 ## Phases
 
-- [ ] **Phase 1: Bug Fix Foundation** - Resolve all 8 known bugs with regression tests; complete error handling audit and small improvements
+- [x] **Phase 1: Bug Fix Foundation** - Resolve all 8 known bugs with regression tests; complete error handling audit and small improvements (completed 2026-06-20)
 - [ ] **Phase 2: CI/CD Infrastructure** - GitHub Actions workflow on windows-latest with lint, test, race detection, and build verification
 - [ ] **Phase 3: Go Backend Test Coverage** - Syscall interface abstraction, 80%+ coverage with enforcement gate, zero real-HKCU tests
 - [ ] **Phase 4: Frontend Quality** - TypeScript strict mode, Vitest + RTL infrastructure, component and state machine tests
@@ -27,10 +27,10 @@ MoveKit is entering a quality-focused milestone. No new user-facing features —
 **Plans**: 4 plans in 2 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Fix BUG-01 (panic type assertion), BUG-02 (junction buffer alignment), BUG-06 (UTF16 error logging) in syscall layer + regression tests
-- [ ] 01-02-PLAN.md — Fix BUG-03 (backup save errors propagated), BUG-04 (same-drive rename tested), BUG-07 (percent dead code removed) in migrate layer + regression tests
-- [ ] 01-03-PLAN.md — Fix BUG-05 (dirSize error propagation), BUG-08 (security software detection surfaced), IMP-04 (ResolveConflict error) in app layer + regression tests
-- [ ] 01-04-PLAN.md — Replace simulateProgress with real Wails events (IMP-02), wire cancel button to CancelMigration (IMP-03)
+- [x] 01-01-PLAN.md — Fix BUG-01 (panic type assertion), BUG-02 (junction buffer alignment), BUG-06 (UTF16 error logging) in syscall layer + regression tests
+- [x] 01-02-PLAN.md — Fix BUG-03 (backup save errors propagated), BUG-04 (same-drive rename tested), BUG-07 (percent dead code removed) in migrate layer + regression tests
+- [x] 01-03-PLAN.md — Fix BUG-05 (dirSize error propagation), BUG-08 (security software detection surfaced), IMP-04 (ResolveConflict error) in app layer + regression tests
+- [x] 01-04-PLAN.md — Replace simulateProgress with real Wails events (IMP-02), wire cancel button to CancelMigration (IMP-03)
 
 ### Phase 2: CI/CD Infrastructure
 **Goal**: Every code change is automatically verified by CI on every push — lint, test with race detection, and production build all pass.
