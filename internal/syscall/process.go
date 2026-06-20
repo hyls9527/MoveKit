@@ -40,7 +40,7 @@ func EnsureSingleInstance(name string) (syscall.Handle, error) {
 
 	// ERROR_ALREADY_EXISTS (183) means another instance already created this mutex.
 	const ERROR_ALREADY_EXISTS = 183
-	if e != nil && e.(syscall.Errno) == ERROR_ALREADY_EXISTS {
+	if errno, ok := e.(syscall.Errno); ok && errno == ERROR_ALREADY_EXISTS {
 		// Close the duplicate handle before returning.
 		closeHandle(syscall.Handle(h))
 		return syscall.InvalidHandle, fmt.Errorf("another instance is already running (mutex %q)", name)
