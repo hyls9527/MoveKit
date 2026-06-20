@@ -40,7 +40,28 @@ func moveFilesSameVolume(source, target string, onProgress func(ProgressInfo)) e
 		})
 	}
 
+	// Verify source is accessible before attempting rename.
+	if _, err := os.Stat(source); err != nil {
+		return &MoveKitError{
+			Code:    ErrCodePermissionDenied,
+			Message: "Cannot access source folder before move",
+			Detail:  err.Error(),
+			Action:  "Verify the source folder exists and is accessible",
+		}
+	}
+
 	if err := os.Rename(source, target); err != nil {
+		// NTFS same-volume rename is atomic — verify source state.
+		if _, statErr := os.Stat(source); os.IsNotExist(statErr) {
+			// Source is gone but rename reported failure — inconsistent.
+			// This should never happen on NTFS.
+			return &MoveKitError{
+				Code:    "INTERNAL_ERROR",
+				Message: "文件移动状态不一致（源文件夹消失但移动报告失败）",
+				Detail:  fmt.Sprintf("rename err: %v; source no longer exists", err),
+				Action:  "请检查目标路径是否有部分文件，可能需要手动恢复",
+			}
+		}
 		return &MoveKitError{
 			Code:    ErrCodeFileLocked,
 			Message: "Failed to move folder (files may be locked)",
