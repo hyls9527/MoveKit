@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, DiskInfo, FolderInfo, ProgressInfo } from './types';
-import { GetFolders, GetDisks, HealthCheck, StartMigration, Rollback, CheckOneDriveKFM, GetVersion } from './lib/wails';
+import { GetFolders, GetDisks, HealthCheck, StartMigration, Rollback, CheckOneDriveKFM, GetVersion, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
 import DiskSelector from './components/DiskSelector';
 import FolderList from './components/FolderList';
 import ProgressBar from './components/ProgressBar';
@@ -113,76 +113,51 @@ function AppInner() {
   const handleConfirm = async () => {
     setState('migrating');
     try {
-      // Reset progress
-      const totalFiles = folders.reduce((sum, f) => sum + f.fileCount, 0);
-      const totalBytes = folders.reduce((sum, f) => sum + f.sizeBytes, 0);
-      setProgress({
-        folder: folders[0]?.name ?? '',
-        phase: '迁移中',
-        filesMoved: 0,
-        totalFiles,
-        bytesMoved: 0,
-        totalBytes,
-        percent: 0,
-      });
-
       await StartMigration(selectedDisk);
-
-      // Simulate progress for mock — in real Wails this would come from events
-      simulateProgress(totalFiles, totalBytes);
     } catch (err) {
       setError(`迁移失败：${err instanceof Error ? err.message : '未知错误'}`);
       setState('failed');
     }
   };
 
-  const simulateProgress = (totalFiles: number, totalBytes: number) => {
-    let filesMoved = 0;
-    let bytesMoved = 0;
-    let folderIdx = 0;
+  const handleCancel = async () => {
+    try {
+      await CancelMigration();
+    } catch {
+      // CancelMigration is fire-and-forget; ignore errors
+    }
+    // The migration:done event will update state to idle/failed.
+    // Do NOT set state here — let the backend event drive state transitions.
+  };
 
-    const interval = setInterval(() => {
-      const step = Math.ceil(totalFiles / 20);
-      filesMoved = Math.min(filesMoved + step, totalFiles);
-      bytesMoved = Math.min(bytesMoved + Math.ceil(totalBytes / 20), totalBytes);
-      const percent = (bytesMoved / totalBytes) * 100;
+  // Ref to access latest progress in event callbacks without re-subscribing.
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
 
-      // Advance folder index
-      let cumulative = 0;
-      for (let i = 0; i < folders.length; i++) {
-        cumulative += folders[i].fileCount;
-        if (filesMoved <= cumulative) {
-          folderIdx = i;
-          break;
-        }
-      }
+  // ── Wails Event Subscriptions (real progress + completion) ──
+  useEffect(() => {
+    if (state !== 'migrating') return;
 
-      setProgress({
-        folder: folders[folderIdx]?.name ?? '',
-        phase: filesMoved >= totalFiles ? '完成' : '迁移中',
-        filesMoved,
-        totalFiles,
-        bytesMoved,
-        totalBytes,
-        percent,
-      });
+    const unsubProgress = onMigrationProgress((info) => {
+      setProgress(info);
+    });
 
-      if (filesMoved >= totalBytes) {
-        clearInterval(interval);
-      }
-      if (filesMoved >= totalFiles) {
-        clearInterval(interval);
-        // Mark all folders as migrated
-        setFolders(prev => prev.map(f => ({ ...f, status: 'migrated', targetPath: f.sourcePath.replace('C:', selectedDisk) })));
-        setFreedBytes(totalBytes);
+    const unsubDone = onMigrationDone((event) => {
+      if (event.success) {
+        setFolders(prev => prev.map(f => ({ ...f, status: 'migrated' as const, targetPath: f.sourcePath.replace('C:', selectedDisk) })));
+        setFreedBytes(progressRef.current.totalBytes);
         setState('completed');
+      } else {
+        setError(`迁移失败：${event.error || '未知错误'}`);
+        setState('failed');
       }
-    }, 300);
-  };
+    });
 
-  const handleCancel = () => {
-    setState('idle');
-  };
+    return () => {
+      unsubProgress();
+      unsubDone();
+    };
+  }, [state]);
 
   const handleRollback = async (folderName: string) => {
     try {
