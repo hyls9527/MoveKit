@@ -80,6 +80,8 @@ func (a *App) GetFolders() []FolderInfo {
 		// Calculate folder size (lazy — may take a moment for large folders).
 		if size, err := dirSize(expanded); err == nil {
 			fi.SizeBytes = size
+		} else {
+			fi.SizeBytes = -1 // sentinel: directory size could not be calculated
 		}
 
 		// Check if it is a junction (i.e. already migrated).
@@ -151,6 +153,7 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 		expanded := os.ExpandEnv(rawPath)
 		size, err := dirSize(expanded)
 		if err != nil {
+			// intentional: skip folders we cannot measure; estimate will be conservative
 			continue
 		}
 		totalBytes += size
@@ -509,12 +512,14 @@ func (a *App) DetectConflicts(source, target string) ([]ConflictInfo, error) {
 }
 
 // ResolveConflict resolves a file conflict. action can be "skip" or "overwrite".
-// This is a placeholder — the actual resolution happens during migration.
+// This is a placeholder — conflict resolution is not yet implemented.
 func (a *App) ResolveConflict(relativePath, action string) error {
-	// Placeholder: conflict resolution is handled during migration via
-	// the conflict resolution strategy configured before starting.
-	// For now, this acknowledges the conflict resolution request.
-	return nil
+	return &migrate.MoveKitError{
+		Code:    "NOT_IMPLEMENTED",
+		Message: "冲突解决功能尚未实现",
+		Detail:  fmt.Sprintf("ResolveConflict(%q, %q) called but conflict resolution is not yet implemented", relativePath, action),
+		Action:  "当前版本不支持交互式冲突解决。如遇文件冲突，迁移将自动跳过冲突文件。",
+	}
 }
 
 // ---------------------------------------------------------------------------
