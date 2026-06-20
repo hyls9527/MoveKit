@@ -82,18 +82,42 @@ Deferred to future release.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 ～ BUG-08 | Phase 0 | Pending |
-| CI-01 ～ CI-04 | Phase 1 | Pending |
-| GO-01 ～ GO-05 | Phase 2 | Pending |
-| FE-01 ～ FE-05 | Phase 3 | Pending |
-| INT-01 ～ INT-04 | Phase 4 | Pending |
-| IMP-01 ～ IMP-04 | Phase 0 | Pending |
+| BUG-01 | Phase 1: Bug Fix Foundation | Pending |
+| BUG-02 | Phase 1: Bug Fix Foundation | Pending |
+| BUG-03 | Phase 1: Bug Fix Foundation | Pending |
+| BUG-04 | Phase 1: Bug Fix Foundation | Pending |
+| BUG-05 | Phase 1: Bug Fix Foundation | Pending |
+| BUG-06 | Phase 1: Bug Fix Foundation | Pending |
+| BUG-07 | Phase 1: Bug Fix Foundation | Pending |
+| BUG-08 | Phase 1: Bug Fix Foundation | Pending |
+| IMP-01 | Phase 1: Bug Fix Foundation | Pending |
+| IMP-02 | Phase 1: Bug Fix Foundation | Pending |
+| IMP-03 | Phase 1: Bug Fix Foundation | Pending |
+| IMP-04 | Phase 1: Bug Fix Foundation | Pending |
+| CI-01 | Phase 2: CI/CD Infrastructure | Pending |
+| CI-02 | Phase 2: CI/CD Infrastructure | Pending |
+| CI-03 | Phase 2: CI/CD Infrastructure | Pending |
+| CI-04 | Phase 2: CI/CD Infrastructure | Pending |
+| GO-01 | Phase 3: Go Backend Test Coverage | Pending |
+| GO-02 | Phase 3: Go Backend Test Coverage | Pending |
+| GO-03 | Phase 3: Go Backend Test Coverage | Pending |
+| GO-04 | Phase 3: Go Backend Test Coverage | Pending |
+| GO-05 | Phase 3: Go Backend Test Coverage | Pending |
+| FE-01 | Phase 4: Frontend Quality | Pending |
+| FE-02 | Phase 4: Frontend Quality | Pending |
+| FE-03 | Phase 4: Frontend Quality | Pending |
+| FE-04 | Phase 4: Frontend Quality | Pending |
+| FE-05 | Phase 4: Frontend Quality | Pending |
+| INT-01 | Phase 5: Integration & Verification | Pending |
+| INT-02 | Phase 5: Integration & Verification | Pending |
+| INT-03 | Phase 5: Integration & Verification | Pending |
+| INT-04 | Phase 5: Integration & Verification | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
 - Mapped to phases: 30
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-21*
-*Last updated: 2026-06-21 after initial definition*
+*Last updated: 2026-06-21 after roadmap creation*
