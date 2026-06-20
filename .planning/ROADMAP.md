@@ -24,7 +24,13 @@ MoveKit is entering a quality-focused milestone. No new user-facing features —
   3. Same-drive folder migration completes near-instantly via `os.Rename` instead of copy-and-delete
   4. Frontend progress bar reflects real Wails backend events (not timer-based simulation), and cancel button stops an in-progress migration with observable effect
   5. `ResolveConflict` surfaces errors to the caller instead of silently returning nil
-**Plans**: TBD
+**Plans**: 4 plans in 2 waves
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix BUG-01 (panic type assertion), BUG-02 (junction buffer alignment), BUG-06 (UTF16 error logging) in syscall layer + regression tests
+- [ ] 01-02-PLAN.md — Fix BUG-03 (backup save errors propagated), BUG-04 (same-drive rename tested), BUG-07 (percent dead code removed) in migrate layer + regression tests
+- [ ] 01-03-PLAN.md — Fix BUG-05 (dirSize error propagation), BUG-08 (security software detection surfaced), IMP-04 (ResolveConflict error) in app layer + regression tests
+- [ ] 01-04-PLAN.md — Replace simulateProgress with real Wails events (IMP-02), wire cancel button to CancelMigration (IMP-03)
 
 ### Phase 2: CI/CD Infrastructure
 **Goal**: Every code change is automatically verified by CI on every push — lint, test with race detection, and production build all pass.
@@ -59,6 +65,7 @@ MoveKit is entering a quality-focused milestone. No new user-facing features —
   3. App.tsx state machine transitions (idle -> scanning -> migrating -> complete) are verified by automated tests
   4. `lib/wails.ts` mock factory can inject arbitrary backend responses, enabling any component test scenario
 **Plans**: TBD
+
 **UI hint**: yes
 
 ### Phase 5: Integration & Verification
