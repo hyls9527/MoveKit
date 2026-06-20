@@ -2,7 +2,7 @@
 // In production (wails build), imports from the auto-generated bindings.
 // In dev mode without Wails, falls back to mock data.
 
-import type { FolderInfo, DiskInfo } from '../types';
+import type { FolderInfo, DiskInfo, ProgressInfo } from '../types';
 
 // Try to import real Wails bindings; fall back to mocks if not available
 let realBindings: any = null;
@@ -95,4 +95,49 @@ export async function DetectCloudSync(): Promise<any[]> {
 export async function CheckUpdate(): Promise<any> {
   if (realBindings) return realBindings.CheckUpdate();
   return { hasUpdate: false, newVersion: '0.1.0', downloadURL: '' };
+}
+
+// ---- Wails Event Subscriptions ----
+
+// Type for the event callback matching Go backend ProgressInfo
+type ProgressCallback = (progress: ProgressInfo) => void;
+
+// Type for the migration:done event payload
+interface MigrationDoneEvent {
+  success: boolean;
+  folder?: string;
+  error?: string;
+  code?: string;
+  detail?: string;
+  action?: string;
+  warning?: string;
+}
+
+type MigrationDoneCallback = (event: MigrationDoneEvent) => void;
+
+/**
+ * Subscribe to real-time migration progress events from the Go backend.
+ * The backend emits `migration:progress` via runtime.EventsEmit in app.go.
+ * Returns an unsubscribe function.
+ */
+export function onMigrationProgress(callback: ProgressCallback): () => void {
+  if (realBindings && (window as any).runtime?.EventsOn) {
+    return (window as any).runtime.EventsOn('migration:progress', callback);
+  }
+  // Mock mode: no-op subscription, return empty unsubscribe
+  console.warn('onMigrationProgress: Wails runtime not available, using mock');
+  return () => {};
+}
+
+/**
+ * Subscribe to migration completion/failure events from the Go backend.
+ * The backend emits `migration:done` via runtime.EventsEmit in app.go.
+ * Returns an unsubscribe function.
+ */
+export function onMigrationDone(callback: MigrationDoneCallback): () => void {
+  if (realBindings && (window as any).runtime?.EventsOn) {
+    return (window as any).runtime.EventsOn('migration:done', callback);
+  }
+  console.warn('onMigrationDone: Wails runtime not available, using mock');
+  return () => {};
 }
