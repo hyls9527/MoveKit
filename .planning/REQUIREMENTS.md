@@ -9,14 +9,14 @@ Requirements for this quality-focused milestone.
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: `process.go:43` unsafe type assertion 修复 — 切换到 comma-ok 模式，防止 panic
-- [ ] **BUG-02**: Junction debug buffer 大小修复 — 与 `REPARSE_DATA_BUFFER` 结构对齐
-- [ ] **BUG-03**: Backup save 错误不再被静默吞掉 — 返回 MoveKitError 或回滚状态标记
-- [ ] **BUG-04**: 同盘迁移降级方案 — 检测到同盘时直接 `os.Rename` 而非 copy+delete
-- [ ] **BUG-05**: `dirSize` 错误传播 — 错误时返回 sentinel 值或 error，前端可感知
-- [ ] **BUG-06**: Shell notify UTF16 编码错误处理 — 错误时日志记录，不阻塞主流程
-- [ ] **BUG-07**: `move.go:137` percent 死代码清理 — 删除或接入实际进度计算
-- [ ] **BUG-08**: 安全软件检测结果接入 — 检测结果在 PreCheck 返回中呈现
+- [x] **BUG-01**: `process.go:43` unsafe type assertion 修复 — 切换到 comma-ok 模式，防止 panic
+- [x] **BUG-02**: Junction debug buffer 大小修复 — 与 `REPARSE_DATA_BUFFER` 结构对齐
+- [x] **BUG-03**: Backup save 错误不再被静默吞掉 — 返回 MoveKitError 或回滚状态标记
+- [x] **BUG-04**: 同盘迁移降级方案 — 检测到同盘时直接 `os.Rename` 而非 copy+delete
+- [x] **BUG-05**: `dirSize` 错误传播 — 错误时返回 sentinel 值或 error，前端可感知
+- [x] **BUG-06**: Shell notify UTF16 编码错误处理 — 错误时日志记录，不阻塞主流程
+- [x] **BUG-07**: `move.go:137` percent 死代码清理 — 删除或接入实际进度计算
+- [x] **BUG-08**: 安全软件检测结果接入 — 检测结果在 PreCheck 返回中呈现
 
 ### CI/CD Foundation
 
@@ -50,10 +50,10 @@ Requirements for this quality-focused milestone.
 
 ### Improvements
 
-- [ ] **IMP-01**: 错误处理审计 — 全局检查被忽略的 error 返回值
-- [ ] **IMP-02**: 前端 `simulateProgress` 替换为真实 Wails 事件监听
-- [ ] **IMP-03**: 取消按钮接入后端 `CancelMigration()` 调用
-- [ ] **IMP-04**: `ResolveConflict` 桩实现 — 至少返回错误而非 nil
+- [x] **IMP-01**: 错误处理审计 — 全局检查被忽略的 error 返回值
+- [x] **IMP-02**: 前端 `simulateProgress` 替换为真实 Wails 事件监听
+- [x] **IMP-03**: 取消按钮接入后端 `CancelMigration()` 调用
+- [x] **IMP-04**: `ResolveConflict` 桩实现 — 至少返回错误而非 nil
 
 ## v2 Requirements
 

@@ -27,19 +27,19 @@ MoveKit 是一个 Windows 桌面应用，帮助用户一键迁移用户文件夹
 
 ### Active
 
-- [ ] **BUG-01**: 修复 `process.go:43` unsafe type assertion panic 风险
-- [ ] **BUG-02**: 修复 junction debug buffer 大小不匹配
-- [ ] **BUG-03**: 修复 backup save errors 被静默吞掉
-- [ ] **BUG-04**: 修复同盘迁移时无降级方案（应直接用 os.Rename）
-- [ ] **BUG-05**: 修复 `dirSize` 错误被静默忽略导致进度不准
-- [ ] **BUG-06**: 修复 shell notify UTF16 编码错误被忽略
-- [ ] **BUG-07**: 修复 `move.go:137` percent 死代码
-- [ ] **BUG-08**: 修复安全软件检测结果被丢弃
-- [ ] **TEST-01**: migrate 包全部源文件有对应测试（当前 5/17 文件有测试）
-- [ ] **TEST-02**: syscall 包全部源文件有对应测试（当前 6/7 文件有测试）
-- [ ] **TEST-03**: app.go Wails 绑定方法有测试覆盖（当前零测试）
+- [x] **BUG-01**: 修复 `process.go:43` unsafe type assertion panic 风险 (Phase 1)
+- [x] **BUG-02**: 修复 junction debug buffer 大小不匹配 (Phase 1)
+- [x] **BUG-03**: 修复 backup save errors 被静默吞掉 (Phase 1)
+- [x] **BUG-04**: 修复同盘迁移时无降级方案（应直接用 os.Rename） (Phase 1)
+- [x] **BUG-05**: 修复 `dirSize` 错误被静默忽略导致进度不准 (Phase 1)
+- [x] **BUG-06**: 修复 shell notify UTF16 编码错误被忽略 (Phase 1)
+- [x] **BUG-07**: 修复 `move.go:137` percent 死代码 (Phase 1)
+- [x] **BUG-08**: 修复安全软件检测结果被丢弃 (Phase 1)
+- [ ] **TEST-01**: migrate 包全部源文件有对应测试（当前 7/17 文件有测试; +2 in Phase 1）
+- [ ] **TEST-02**: syscall 包全部源文件有对应测试（当前 8/7 文件有测试; +2 in Phase 1 — COMPLETE)
+- [ ] **TEST-03**: app.go Wails 绑定方法有测试覆盖（当前 1 test file; +1 in Phase 1）
 - [ ] **TEST-04**: 前端关键组件有基础测试（当前零测试）
-- [ ] **IMPROVE**: 顺手小改进（每项改进需在 plan 阶段明确列出，不可自行扩展范围）
+- [x] **IMPROVE**: IMP-01 error audit, IMP-02 real progress, IMP-03 cancel wiring, IMP-04 ResolveConflict error (Phase 1)
 
 ### Out of Scope
 
