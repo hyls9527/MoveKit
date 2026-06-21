@@ -9,6 +9,12 @@ import (
 func TestCreateJunction(t *testing.T) {
 	tmpDir := t.TempDir()
 
+	// Junctions require NTFS. Skip if temp dir is not on an NTFS volume.
+	volInfo, err := GetVolumeInfo(filepath.VolumeName(tmpDir))
+	if err != nil || volInfo.FileSystem != "NTFS" {
+		t.Skipf("junction test requires NTFS volume (got %s)", volInfo.FileSystem)
+	}
+
 	// Create a target directory.
 	target := filepath.Join(tmpDir, "target")
 	if err := os.Mkdir(target, 0o755); err != nil {
