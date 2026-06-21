@@ -6,7 +6,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  { ignores: ["dist", "node_modules", "wailsjs"] },
+  { ignores: ["dist", "node_modules", "wailsjs", "src/lib/wails.ts"] },
   { settings: { react: { version: "detect" } } },
   js.configs.recommended,
   ...tseslint.configs.recommended,
