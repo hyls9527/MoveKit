@@ -124,6 +124,7 @@ jobs:
       - name: Build with Wails
         env:
           CGO_ENABLED: 1
+          npm_config_legacy_peer_deps: true
         run: wails build -webview2 embed
         shell: pwsh
 
@@ -158,6 +159,7 @@ jobs:
       - name: Build for release
         env:
           CGO_ENABLED: 1
+          npm_config_legacy_peer_deps: true
         run: |
           $version = "${{ github.ref_name }}"
           wails build -webview2 embed -ldflags "-X main.currentVersion=$version"
