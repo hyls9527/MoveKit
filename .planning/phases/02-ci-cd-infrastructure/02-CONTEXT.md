@@ -39,7 +39,7 @@
 - **D-16:** 超时 — 每个 job 15 分钟超时，防止挂死消耗 Runner 时长
 
 ### Workflow 结构
-- **D-17:** 文件组织 — 单一 `ci.yml` 文件，包含 lint → test → build → release（条件触发）job 流水线
+- **D-17:** [informational] 文件组织 — 单一 `ci.yml` 文件，包含 lint → test → build → release（条件触发）job 流水线
 - **D-18:** 状态徽章 — CI 通过后 README.md 顶部展示 build status badge
 
 ### 依赖管理
