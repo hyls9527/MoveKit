@@ -129,8 +129,12 @@ func driveRootPath(drive string) string {
 // For MVP, we check if the drive reports as non-rotational via DeviceIoControl.
 func IsSSDDrive(drive string) bool {
     root := driveRootPath(drive)
+    rootPtr, err := syscall.UTF16PtrFromString(root)
+    if err != nil {
+        return false
+    }
     handle, err := syscall.CreateFile(
-        syscall.UTF16PtrFromString(root),
+        rootPtr,
         0,
         syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE,
         nil,
