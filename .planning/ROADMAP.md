@@ -7,7 +7,7 @@ MoveKit is entering a quality-focused milestone. No new user-facing features —
 ## Phases
 
 - [x] **Phase 1: Bug Fix Foundation** - Resolve all 8 known bugs with regression tests; complete error handling audit and small improvements (completed 2026-06-20)
-- [ ] **Phase 2: CI/CD Infrastructure** - GitHub Actions workflow on windows-latest with lint, test, race detection, and build verification
+- [x] **Phase 2: CI/CD Infrastructure** - GitHub Actions workflow on windows-latest with lint, test, race detection, and build verification (completed 2026-06-21)
 - [ ] **Phase 3: Go Backend Test Coverage** - Syscall interface abstraction, 80%+ coverage with enforcement gate, zero real-HKCU tests
 - [ ] **Phase 4: Frontend Quality** - TypeScript strict mode, Vitest + RTL infrastructure, component and state machine tests
 - [ ] **Phase 5: Integration & Verification** - Full Migrate+Rollback roundtrip with real NTFS junctions in isolated environments
@@ -51,8 +51,8 @@ Plans:
 **Plans**: 2 plans in 1 wave
 Plans:
 
-- [ ] 02-01-PLAN.md — Lint configuration: `.golangci.yml` (strict v2, 10 linters) + ESLint flat config + npm lint scripts (implements D-04, D-05, D-06)
-- [ ] 02-02-PLAN.md — CI workflow `.github/workflows/ci.yml` (4-job pipeline: lint/test/build/release) + `.github/dependabot.yml` (3 ecosystems) + README CI badge (implements CI-01, CI-03, CI-04, D-01–D-19)
+- [x] 02-01-PLAN.md — Lint configuration: `.golangci.yml` (strict v2, 10 linters) + ESLint flat config + npm lint scripts (implements D-04, D-05, D-06)
+- [x] 02-02-PLAN.md — CI workflow `.github/workflows/ci.yml` (4-job pipeline: lint/test/build/release) + `.github/dependabot.yml` (3 ecosystems) + README CI badge (implements CI-01, CI-03, CI-04, D-01–D-19)
 
 ### Phase 3: Go Backend Test Coverage
 
@@ -104,7 +104,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Bug Fix Foundation | 4/4 | Complete | 2026-06-20 |
-| 2. CI/CD Infrastructure | 0/2 | Planned | - |
+| 2. CI/CD Infrastructure | 2/2 | Complete   | 2026-06-21 |
 | 3. Go Backend Test Coverage | 0/? | Not started | - |
 | 4. Frontend Quality | 0/? | Not started | - |
 | 5. Integration & Verification | 0/? | Not started | - |
