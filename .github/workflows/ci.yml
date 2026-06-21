@@ -80,7 +80,6 @@ jobs:
       - name: Run Go tests with race detection and coverage
         run: |
           gotestsum --junitfile test-results.xml -- -race -coverprofile=coverage.out -covermode=atomic ./...
-        shell: pwsh
 
       - name: Print coverage summary
         run: go tool cover -func=coverage.out
