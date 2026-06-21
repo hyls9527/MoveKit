@@ -130,7 +130,7 @@ func driveRootPath(drive string) string {
 func IsSSDDrive(drive string) bool {
     root := driveRootPath(drive)
     handle, err := syscall.CreateFile(
-        syscall.StringToUTF16Ptr(root),
+        syscall.UTF16PtrFromString(root),
         0,
         syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE,
         nil,

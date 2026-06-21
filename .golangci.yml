@@ -30,6 +30,8 @@ linters:
   exclusions:
     paths:
       - ".*_test\\.go$"
+      - "internal/syscall/.*"
+      - "internal/folders/.*"
     rules:
       - path: ".*_test\\.go$"
         linters:
@@ -54,3 +56,8 @@ formatters:
     goimports:
       local-prefixes:
         - github.com/movekit/movekit
+
+  exclusions:
+    paths:
+      - "internal/syscall/.*"
+      - "internal/folders/.*"
