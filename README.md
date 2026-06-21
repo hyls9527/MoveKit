@@ -1,5 +1,7 @@
 # MoveKit - C盘瘦身工具
 
+[![CI](https://github.com/hyls9527/MoveKit/actions/workflows/ci.yml/badge.svg)](https://github.com/hyls9527/MoveKit/actions/workflows/ci.yml)
+
 一键迁移用户文件夹（桌面/下载/文档/图片/音乐）到其他盘，安全可靠。
 
 ## ✨ 功能
