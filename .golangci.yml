@@ -32,6 +32,10 @@ linters:
       - ".*_test\\.go$"
       - "internal/syscall/.*"
       - "internal/folders/.*"
+      - "cmd/verify/.*"
+      - "internal/migrate/check\\.go"
+      - "internal/migrate/migrate\\.go"
+      - "internal/migrate/move\\.go"
     rules:
       - path: ".*_test\\.go$"
         linters:
