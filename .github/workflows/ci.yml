@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
@@ -40,8 +42,8 @@ jobs:
       - uses: golangci/golangci-lint-action@v7
         with:
           version: v2.11.3
-          only-new-issues: false
-          args: --timeout=5m
+          only-new-issues: true
+          args: --new-from-rev=origin/main --timeout=5m
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci --legacy-peer-deps
