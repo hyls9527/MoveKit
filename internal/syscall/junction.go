@@ -85,11 +85,11 @@ func buildReparseBuffer(substitute, print string) ([]byte, error) {
 		return nil, fmt.Errorf("utf16 print: %w", err)
 	}
 
-	subLen := (len(subUTF16) - 1) * 2 // bytes EXCLUDING NUL terminator
-	printLen := (len(printUTF16) - 1) * 2
+	subLen := len(subUTF16) * 2 // bytes INCLUDING NUL terminator (per REPARSE_DATA_BUFFER spec)
+	printLen := len(printUTF16) * 2
 
 	// ReparseDataLength = 8 (mount-point header) + path buffer bytes
-	reparseDataLen := 8 + subLen + 2 + printLen + 2 // +2 for each NUL terminator in path buffer
+	reparseDataLen := 8 + subLen + printLen // NUL terminators already counted in subLen/printLen
 	totalSize := 8 + reparseDataLen // 8 = common header (tag + dataLen + reserved)
 
 	buf := make([]byte, totalSize)
@@ -103,7 +103,7 @@ func buildReparseBuffer(substitute, print string) ([]byte, error) {
 	// MountPointReparseBuffer header
 	le.PutUint16(buf[8:], 0)              // SubstituteNameOffset
 	le.PutUint16(buf[10:], uint16(subLen)) // SubstituteNameLength
-	le.PutUint16(buf[12:], uint16(subLen+2)) // PrintNameOffset (= end of substitute + NUL)
+	le.PutUint16(buf[12:], uint16(subLen)) // PrintNameOffset (subLen already includes NUL)
 	le.PutUint16(buf[14:], uint16(printLen)) // PrintNameLength
 
 	// PathBuffer: substitute then print (already NUL-terminated by UTF16FromString)

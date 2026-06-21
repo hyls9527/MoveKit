@@ -19,7 +19,7 @@ const (
 	TH32CS_SNAPPROCESS = 0x00000002
 )
 
-// EnsureSingleInstance creates a named mutex to enforce single-instance behaviour.
+// EnsureSingleInstance creates a named mutex to enforce single-instance behavior.
 // If another instance already holds the mutex, an error is returned.
 // On success, the returned handle must be kept alive (do not close it) for the
 // lifetime of the process.
@@ -40,7 +40,7 @@ func EnsureSingleInstance(name string) (syscall.Handle, error) {
 
 	// ERROR_ALREADY_EXISTS (183) means another instance already created this mutex.
 	const ERROR_ALREADY_EXISTS = 183
-	if e != nil && e.(syscall.Errno) == ERROR_ALREADY_EXISTS {
+	if errno, ok := e.(syscall.Errno); ok && errno == ERROR_ALREADY_EXISTS {
 		// Close the duplicate handle before returning.
 		closeHandle(syscall.Handle(h))
 		return syscall.InvalidHandle, fmt.Errorf("another instance is already running (mutex %q)", name)
@@ -73,7 +73,7 @@ type processEntry32 struct {
 // (e.g. "360sd.exe") is currently running. Uses CreateToolhelp32Snapshot.
 func IsProcessRunning(name string) bool {
 	snap, _, _ := procCreateToolhelp32Snapshot.Call(TH32CS_SNAPPROCESS, 0)
-	if snap == 0 || snap == uintptr(^uintptr(0)) {
+	if snap == 0 || snap == ^uintptr(0) {
 		return false
 	}
 	defer closeHandle(syscall.Handle(snap))

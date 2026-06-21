@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.5"
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/golangci-lint
+          key: ${{ runner.os }}-golangci-lint-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-golangci-lint-
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.11.3
+          only-new-issues: true
+          args: --timeout=5m
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci --legacy-peer-deps
+
+      - name: Lint frontend (ESLint)
+        run: cd frontend && npm run lint
+
+      - name: Check TypeScript types
+        run: cd frontend && npm run lint:ts
+
+  test:
+    needs: lint
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.5"
+          cache: true
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-go-build-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
+
+      - name: Verify GCC available for race detector
+        run: gcc --version
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+        shell: bash
+
+      - name: Run Go tests with race detection and coverage
+        run: gotestsum --junitfile test-results.xml -- -race -coverprofile=coverage.out -covermode=atomic ./...
+        shell: bash
+
+      - name: Print coverage summary
+        run: go tool cover -func=coverage.out
+        shell: bash
+
+      - name: Upload test report and coverage
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results.xml
+            coverage.out
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.5"
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci --legacy-peer-deps
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+        shell: bash
+
+      - name: Build with Wails
+        env:
+          CGO_ENABLED: 1
+          npm_config_legacy_peer_deps: true
+        run: wails build -webview2 embed
+        shell: pwsh
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.5"
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci --legacy-peer-deps
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+        shell: bash
+
+      - name: Build for release
+        env:
+          CGO_ENABLED: 1
+          npm_config_legacy_peer_deps: true
+        run: |
+          $version = "${{ github.ref_name }}"
+          wails build -webview2 embed -ldflags "-X main.currentVersion=$version"
+        shell: pwsh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: build/bin/MoveKit.exe
+          generate_release_notes: true
