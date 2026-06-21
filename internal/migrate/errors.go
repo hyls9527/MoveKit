@@ -25,6 +25,7 @@ type MoveKitError struct {
 	Message string `json:"message"`
 	Detail  string `json:"detail"`
 	Action  string `json:"action"`
+	Warning string `json:"warning,omitempty"` // Non-blocking informational warning
 }
 
 func (e *MoveKitError) Error() string { return e.Message }

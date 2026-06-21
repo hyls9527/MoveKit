@@ -1,6 +1,8 @@
 package winsyscall
 
 import (
+	"fmt"
+	"os"
 	"syscall"
 	"unsafe"
 )
@@ -29,6 +31,7 @@ var (
 //	dwItem1  — path to the old item (or just item for non-rename events)
 //	dwItem2  — path to the new item (for rename events, otherwise 0)
 func SHChangeNotify(eventId int32, flags uint32, dwItem1, dwItem2 uintptr) {
+	// SHChangeNotify returns void; no error to check.
 	procSHChangeNotify.Call(
 		uintptr(eventId),
 		uintptr(flags),
@@ -40,8 +43,16 @@ func SHChangeNotify(eventId int32, flags uint32, dwItem1, dwItem2 uintptr) {
 // NotifyFolderRenamed tells the shell that a folder has been renamed/moved.
 // oldPath and newPath must be UTF-16 encoded paths; this function handles encoding.
 func NotifyFolderRenamed(oldPath, newPath string) {
-	oldPtr, _ := syscall.UTF16PtrFromString(oldPath)
-	newPtr, _ := syscall.UTF16PtrFromString(newPath)
+	oldPtr, err := syscall.UTF16PtrFromString(oldPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "winsyscall: NotifyFolderRenamed utf16 oldPath %q: %v\n", oldPath, err)
+		return
+	}
+	newPtr, err := syscall.UTF16PtrFromString(newPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "winsyscall: NotifyFolderRenamed utf16 newPath %q: %v\n", newPath, err)
+		return
+	}
 	SHChangeNotify(
 		SHCNE_RENAMEFOLDER,
 		SHCNF_PATH,
@@ -53,7 +64,11 @@ func NotifyFolderRenamed(oldPath, newPath string) {
 // NotifyDirUpdated tells the shell that the contents of a directory have changed.
 // This causes Explorer to re-enumerate the directory.
 func NotifyDirUpdated(path string) {
-	p, _ := syscall.UTF16PtrFromString(path)
+	p, err := syscall.UTF16PtrFromString(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "winsyscall: NotifyDirUpdated utf16 path %q: %v\n", path, err)
+		return
+	}
 	SHChangeNotify(
 		SHCNE_UPDATEDIR,
 		SHCNF_PATH|SHCNF_FLUSHNOWAIT,

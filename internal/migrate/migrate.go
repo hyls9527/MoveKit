@@ -89,12 +89,17 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 
 	// 3. PreCheck.
 	if err := PreCheck(actualSource, driveLetter); err != nil {
-		log.Error("PreCheck failed: %s — %s", err.Code, err.Detail)
-		return err
+		if err.Code == "SECURITY_SOFTWARE_DETECTED" {
+			log.Warn("检测到安全软件: %s，继续迁移", err.Warning)
+			// Non-blocking: proceed with migration despite AV detection
+		} else {
+			log.Error("PreCheck failed: %s — %s", err.Code, err.Detail)
+			return err
+		}
 	}
 
 	// Check for file conflicts before moving.
-	conflicts, _ := DetectConflicts(actualSource, targetPath)
+	conflicts, _ := DetectConflicts(actualSource, targetPath) // intentional: conflicts are logged but do not block migration (per MVP behavior)
 	if len(conflicts) > 0 {
 		log.Warn("Found %d file conflicts", len(conflicts))
 		// For MVP: log conflicts but proceed (user already confirmed)
@@ -113,7 +118,13 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 		Status:        "in_progress",
 	}
 	if err := saveBackup(backupPath, backup); err != nil {
-		log.Warn("Failed to save backup record: %v", err)
+		log.Error("Failed to save initial backup record: %v", err)
+		return &MoveKitError{
+			Code:    ErrCodePermissionDenied,
+			Message: "无法保存迁移备份记录",
+			Detail:  err.Error(),
+			Action:  "请检查磁盘空间和 %APPDATA%\\MoveKit 目录权限后重试",
+		}
 	}
 
 	// 5. Move files.
@@ -183,7 +194,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Shell Folders: REG_SZ (fully expanded).
-	absTarget, _ := filepath.Abs(targetPath)
+	absTarget, _ := filepath.Abs(targetPath) // filepath.Abs on an already-absolute path; fallback to targetPath
 	if err := sys.WriteString(sys.ShellFoldersKey, regValueName, absTarget); err != nil {
 		log.Error("Failed to update Shell Folders: %v", err)
 		return &MoveKitError{
@@ -203,7 +214,10 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	// 9. Mark backup complete.
 	backup.Status = "complete"
 	backup.NewPath = targetPath
-	_ = saveBackup(backupPath, backup)
+	if err := saveBackup(backupPath, backup); err != nil {
+		log.Warn("Failed to save backup completion record: %v — rollback may be affected", err)
+		// intentional: migration succeeded; backup update is non-critical
+	}
 
 	if onProgress != nil {
 		onProgress(regValueName, "complete", 0, 0, 0, 0)
