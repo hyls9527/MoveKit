@@ -14,8 +14,6 @@ linters:
     - ineffassign
     - unconvert
     - unused
-    - gofmt
-    - goimports
     - misspell
 
   settings:
@@ -26,10 +24,6 @@ linters:
     gosec:
       excludes:
         - G104
-    gofmt:
-      simplify: true
-    goimports:
-      local-prefixes: github.com/movekit/movekit
     misspell:
       locale: US
 
@@ -48,3 +42,14 @@ linters:
         linters:
           - gosec
         text: "G104"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes: github.com/movekit/movekit
