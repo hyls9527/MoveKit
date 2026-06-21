@@ -52,4 +52,5 @@ formatters:
     gofmt:
       simplify: true
     goimports:
-      local-prefixes: github.com/movekit/movekit
+      local-prefixes:
+        - github.com/movekit/movekit
