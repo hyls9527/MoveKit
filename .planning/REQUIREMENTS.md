@@ -20,10 +20,10 @@ Requirements for this quality-focused milestone.
 
 ### CI/CD Foundation
 
-- [ ] **CI-01**: GitHub Actions workflow on `windows-latest` — lint + test + build
-- [ ] **CI-02**: `golangci-lint` 集成 — 覆盖所有 Go 包，阻塞 PR
-- [ ] **CI-03**: `go test -race -cover` 自动运行，覆盖率报告输出
-- [ ] **CI-04**: `wails build` 验证 — 确保每次提交可构建
+- [x] **CI-01**: GitHub Actions workflow on `windows-latest` — lint + test + build
+- [x] **CI-02**: `golangci-lint` 集成 — 覆盖所有 Go 包，阻塞 PR
+- [x] **CI-03**: `go test -race -cover` 自动运行，覆盖率报告输出
+- [x] **CI-04**: `wails build` 验证 — 确保每次提交可构建
 
 ### Go Backend Test Coverage
 
@@ -94,10 +94,10 @@ Deferred to future release.
 | IMP-02 | Phase 1: Bug Fix Foundation | Pending |
 | IMP-03 | Phase 1: Bug Fix Foundation | Pending |
 | IMP-04 | Phase 1: Bug Fix Foundation | Pending |
-| CI-01 | Phase 2: CI/CD Infrastructure | Pending |
-| CI-02 | Phase 2: CI/CD Infrastructure | Pending |
-| CI-03 | Phase 2: CI/CD Infrastructure | Pending |
-| CI-04 | Phase 2: CI/CD Infrastructure | Pending |
+| CI-01 | Phase 2: CI/CD Infrastructure | Complete |
+| CI-02 | Phase 2: CI/CD Infrastructure | Complete |
+| CI-03 | Phase 2: CI/CD Infrastructure | Complete |
+| CI-04 | Phase 2: CI/CD Infrastructure | Complete |
 | GO-01 | Phase 3: Go Backend Test Coverage | Pending |
 | GO-02 | Phase 3: Go Backend Test Coverage | Pending |
 | GO-03 | Phase 3: Go Backend Test Coverage | Pending |
