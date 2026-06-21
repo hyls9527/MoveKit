@@ -41,7 +41,11 @@ Plans:
   2. `golangci-lint` passes with zero warnings across all Go packages
   3. `go test -race -cover` runs on every push and produces a human-readable coverage report
   4. `wails build` succeeds on the CI runner, confirming the project is always in a shippable state
-**Plans**: TBD
+**Plans**: 2 plans in 1 wave
+
+Plans:
+- [ ] 02-01-PLAN.md — Lint configuration: `.golangci.yml` (strict v2, 10 linters) + ESLint flat config + npm lint scripts (implements D-04, D-05, D-06)
+- [ ] 02-02-PLAN.md — CI workflow `.github/workflows/ci.yml` (4-job pipeline: lint/test/build/release) + `.github/dependabot.yml` (3 ecosystems) + README CI badge (implements CI-01, CI-03, CI-04, D-01–D-19)
 
 ### Phase 3: Go Backend Test Coverage
 **Goal**: Go backend has comprehensive test coverage (>=80% overall, >=85% for migrate package) with clean syscall abstractions; no test touches real HKCU registry or leaks NTFS junctions.
@@ -83,8 +87,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Bug Fix Foundation | 0/? | Not started | - |
-| 2. CI/CD Infrastructure | 0/? | Not started | - |
+| 1. Bug Fix Foundation | 4/4 | Complete | 2026-06-20 |
+| 2. CI/CD Infrastructure | 0/2 | Planned | - |
 | 3. Go Backend Test Coverage | 0/? | Not started | - |
 | 4. Frontend Quality | 0/? | Not started | - |
 | 5. Integration & Verification | 0/? | Not started | - |
