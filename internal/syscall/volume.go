@@ -28,7 +28,7 @@ type VolumeInfo struct {
 	VolumeSN   uint32
 	IsRemovable bool
 	IsNetwork   bool
-	IsSSD       bool
+	IsFixedDrive bool
 }
 
 // GetVolumeInfo returns volume information for the given drive letter.
@@ -68,9 +68,10 @@ func GetVolumeInfo(drive string) (VolumeInfo, error) {
 		VolumeSN:    serialNumber,
 		IsRemovable: driveType == DRIVE_REMOVABLE,
 		IsNetwork:   driveType == DRIVE_REMOTE,
-		// Heuristic: SSD detection requires more advanced queries (e.g. DeviceIoControl
-		// with IOCTL_STORAGE_QUERY_PROPERTY). We default to false here.
-		IsSSD: driveType == DRIVE_FIXED,
+		// IsFixedDrive indicates a non-removable, non-network drive.
+		// SSD vs HDD differentiation requires more advanced queries (e.g. DeviceIoControl
+		// with IOCTL_STORAGE_QUERY_PROPERTY). Not implemented yet.
+		IsFixedDrive: driveType == DRIVE_FIXED,
 	}, nil
 }
 

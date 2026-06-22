@@ -127,7 +127,7 @@ func (a *App) GetDisks() []DiskInfo {
 			Label:       volInfo.FileSystem, // Label comes from volume name; FileSystem as proxy
 			TotalBytes:  totalBytes,
 			FreeBytes:   freeBytes,
-			IsSSD:       volInfo.IsSSD,
+			IsFixedDrive:       volInfo.IsFixedDrive,
 			IsRemovable: volInfo.IsRemovable,
 			IsNetwork:   volInfo.IsNetwork,
 			FileSystem:  volInfo.FileSystem,
@@ -175,26 +175,22 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 	}
 
 	// Check if target is SSD.
-	targetIsSSD := false
+	targetIsFixedDrive := false
 	tgtLetter := targetDrive
 	if len(tgtLetter) >= 2 && tgtLetter[1] == ':' {
 		tgtLetter = tgtLetter[:1]
 	}
 	volInfo, err := sys.GetVolumeInfo(tgtLetter)
 	if err == nil {
-		targetIsSSD = volInfo.IsSSD
+		targetIsFixedDrive = volInfo.IsFixedDrive
 	}
 
 	// Heuristic estimation:
 	// - Same volume rename: ~2s
-	// - Cross-volume SSD: ~100 MB/s
-	// - Cross-volume HDD: ~50 MB/s
+	// - Cross-volume: ~50 MB/s (conservative; SSD/HDD distinction not implemented)
 	estimatedSec := 2
 	if isCrossVolume {
-		speedMBps := 50 // HDD default
-		if targetIsSSD {
-			speedMBps = 100
-		}
+		speedMBps := 50 // Conservative: SSD/HDD distinction not implemented
 		totalMB := totalBytes / (1024 * 1024)
 		if totalMB > 0 {
 			estimatedSec = int(totalMB/int64(speedMBps)) + 1
@@ -204,7 +200,7 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 	estimatedText := formatDuration(estimatedSec)
 	return DurationEstimate{
 		IsCrossVolume: isCrossVolume,
-		TargetIsSSD:   targetIsSSD,
+		TargetIsFixedDrive:   targetIsFixedDrive,
 		EstimatedSec:  estimatedSec,
 		EstimatedText: estimatedText,
 	}

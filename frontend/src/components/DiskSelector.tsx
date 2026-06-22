@@ -63,9 +63,7 @@ export default function DiskSelector({ disks, selected, onSelect }: DiskSelector
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-text-primary">{disk.drive}</span>
                   <span className="text-text-secondary text-sm">{disk.label}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-surface-alt text-text-secondary">
-                    {disk.isSSD ? 'SSD' : 'HDD'}
-                  </span>
+                  {/* SSD/HDD type badge removed: reliable detection not yet implemented */}
                   {isRecommended && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
                       推荐
@@ -87,11 +85,7 @@ export default function DiskSelector({ disks, selected, onSelect }: DiskSelector
       {!selected && (
         <p className="text-sm text-text-secondary">请选择一个目标磁盘以继续</p>
       )}
-      {selected && !disks.find(d => d.drive === selected)?.isSSD && (
-        <p className="text-sm text-warning">
-          ⚠ 当前选择的是 HDD 磁盘，迁移后系统响应速度可能下降。建议优先选择 SSD。
-        </p>
-      )}
+      {/* HDD warning removed: SSD vs HDD detection not yet implemented */}
     </div>
   );
 }

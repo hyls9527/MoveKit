@@ -17,7 +17,7 @@ type DiskInfo struct {
 	Label       string `json:"label"`
 	TotalBytes  int64  `json:"totalBytes"`
 	FreeBytes   int64  `json:"freeBytes"`
-	IsSSD       bool   `json:"isSSD"`
+	IsFixedDrive bool   `json:"isFixedDrive"`
 	IsRemovable bool   `json:"isRemovable"`
 	IsNetwork   bool   `json:"isNetwork"`
 	FileSystem  string `json:"fileSystem"`
@@ -25,7 +25,7 @@ type DiskInfo struct {
 
 type DurationEstimate struct {
 	IsCrossVolume bool   `json:"isCrossVolume"`
-	TargetIsSSD   bool   `json:"targetIsSSD"`
+	TargetIsFixedDrive bool   `json:"targetIsFixedDrive"`
 	EstimatedSec  int    `json:"estimatedSec"`
 	EstimatedText string `json:"estimatedText"`
 }
@@ -111,7 +111,7 @@ type MigrationStatus struct {
 type DiskDetail struct {
 	Drive      string `json:"drive"`
 	Label      string `json:"label"`
-	IsSSD      bool   `json:"isSSD"`
+	IsFixedDrive bool   `json:"isFixedDrive"`
 	FreeBytes  int64  `json:"freeBytes"`
 	TotalBytes int64  `json:"totalBytes"`
 }
