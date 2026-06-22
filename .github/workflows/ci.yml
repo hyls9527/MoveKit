@@ -52,6 +52,9 @@ jobs:
       - name: Check TypeScript types
         run: cd frontend && npm run lint:ts
 
+      - name: Run frontend tests
+        run: cd frontend && npm run test
+
   test:
     needs: lint
     runs-on: windows-latest
