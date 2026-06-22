@@ -13,7 +13,7 @@ export interface DiskInfo {
   label: string;
   totalBytes: number;
   freeBytes: number;
-  isSSD: boolean;
+  isFixedDrive: boolean;
   isRemovable: boolean;
   isNetwork: boolean;
   fileSystem: string;

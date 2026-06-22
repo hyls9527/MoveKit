@@ -24,8 +24,8 @@ const mockFolders: FolderInfo[] = [
 ];
 
 const mockDisks: DiskInfo[] = [
-  { drive: 'C:', label: '系统盘', totalBytes: 256e9, freeBytes: 45e9, isSSD: true, isRemovable: false, isNetwork: false, fileSystem: 'NTFS' },
-  { drive: 'D:', label: '数据盘', totalBytes: 512e9, freeBytes: 128e9, isSSD: true, isRemovable: false, isNetwork: false, fileSystem: 'NTFS' },
+  { drive: 'C:', label: '系统盘', totalBytes: 256e9, freeBytes: 45e9, isFixedDrive: true, isRemovable: false, isNetwork: false, fileSystem: 'NTFS' },
+  { drive: 'D:', label: '数据盘', totalBytes: 512e9, freeBytes: 128e9, isFixedDrive: true, isRemovable: false, isNetwork: false, fileSystem: 'NTFS' },
 ];
 
 // ---- Exported functions (delegate to real bindings or mock) ----
@@ -79,7 +79,7 @@ export async function SetFirstRunFlag(firstRun: boolean): Promise<void> {
 
 export async function EstimateDuration(targetDrive: string): Promise<any> {
   if (realBindings) return realBindings.EstimateDuration(targetDrive);
-  return { isCrossVolume: true, targetIsSSD: true, estimatedSec: 60, estimatedText: '约 1 分钟' };
+  return { isCrossVolume: true, targetIsFixedDrive: true, estimatedSec: 60, estimatedText: '约 1 分钟' };
 }
 
 export async function StartupIntegrityCheck(): Promise<any[]> {

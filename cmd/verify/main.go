@@ -41,8 +41,8 @@ func main() {
 			continue
 		}
 		free, total, _, _ := sys.GetDiskFreeSpace(drive)
-		fmt.Printf("  OK %s: FS=%s SSD=%v Removable=%v Network=%v Free=%dMB Total=%dMB\n",
-			drive, volInfo.FileSystem, volInfo.IsSSD, volInfo.IsRemovable, volInfo.IsNetwork,
+		fmt.Printf("  OK %s: FS=%s Fixed=%v Removable=%v Network=%v Free=%dMB Total=%dMB\n",
+			drive, volInfo.FileSystem, volInfo.IsFixedDrive, volInfo.IsRemovable, volInfo.IsNetwork,
 			free/(1024*1024), total/(1024*1024))
 	}
 

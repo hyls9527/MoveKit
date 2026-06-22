@@ -39,7 +39,7 @@ export namespace main {
 	    label: string;
 	    totalBytes: number;
 	    freeBytes: number;
-	    isSSD: boolean;
+	    isFixedDrive: boolean;
 	    isRemovable: boolean;
 	    isNetwork: boolean;
 	    fileSystem: string;
@@ -54,7 +54,7 @@ export namespace main {
 	        this.label = source["label"];
 	        this.totalBytes = source["totalBytes"];
 	        this.freeBytes = source["freeBytes"];
-	        this.isSSD = source["isSSD"];
+	        this.isFixedDrive = source["isFixedDrive"];
 	        this.isRemovable = source["isRemovable"];
 	        this.isNetwork = source["isNetwork"];
 	        this.fileSystem = source["fileSystem"];
@@ -62,7 +62,7 @@ export namespace main {
 	}
 	export class DurationEstimate {
 	    isCrossVolume: boolean;
-	    targetIsSSD: boolean;
+	    targetIsFixedDrive: boolean;
 	    estimatedSec: number;
 	    estimatedText: string;
 	
@@ -73,7 +73,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.isCrossVolume = source["isCrossVolume"];
-	        this.targetIsSSD = source["targetIsSSD"];
+	        this.targetIsFixedDrive = source["targetIsFixedDrive"];
 	        this.estimatedSec = source["estimatedSec"];
 	        this.estimatedText = source["estimatedText"];
 	    }
