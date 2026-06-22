@@ -181,9 +181,9 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	log.Info("Junction created: %s -> %s", maskPath(sourcePath), maskPath(targetPath))
 
 	// 7. Update registry.
-	// User Shell Folders: REG_EXPAND_SZ (with %USERPROFILE% etc.)
+	// User Shell Folders: REG_SZ (fully expanded path, no env vars)
 	regValue := fmt.Sprintf("%s\\%s", driveLetter+":", folderName)
-	if err := sys.WriteExpandString(sys.UserShellFoldersKey, regValueName, regValue); err != nil {
+	if err := sys.WriteString(sys.UserShellFoldersKey, regValueName, regValue); err != nil {
 		log.Error("Failed to update User Shell Folders: %v", err)
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
