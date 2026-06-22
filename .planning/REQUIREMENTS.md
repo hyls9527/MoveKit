@@ -27,19 +27,19 @@ Requirements for this quality-focused milestone.
 
 ### Go Backend Test Coverage
 
-- [ ] **GO-01**: Syscall 接口抽象层 — RegistryAccessor / ProcessChecker / VolumeChecker 接口
-- [ ] **GO-02**: `internal/syscall/` 全部 7 个源文件有对应测试（当前 6/7）
-- [ ] **GO-03**: `internal/migrate/` 全部 17 个源文件有对应测试（当前 5/17）
-- [ ] **GO-04**: `app.go` 17 个 Wails 绑定方法有测试覆盖（当前 0/17）
-- [ ] **GO-05**: 测试覆盖率门禁 — 整体 ≥80%，migrate 包 ≥85%
+- [x] **GO-01**: Syscall 接口抽象层 — RegistryAccessor / ProcessChecker / VolumeChecker 接口
+- [x] **GO-02**: `internal/syscall/` 全部 7 个源文件有对应测试（当前 6/7）
+- [x] **GO-03**: `internal/migrate/` 全部 17 个源文件有对应测试（当前 5/17）
+- [x] **GO-04**: `app.go` 17 个 Wails 绑定方法有测试覆盖（当前 0/17）
+- [x] **GO-05**: 测试覆盖率门禁 — 整体 ≥80%，migrate 包 ≥85%
 
 ### Frontend Quality
 
-- [ ] **FE-01**: TypeScript strict 模式零错误
-- [ ] **FE-02**: Vitest + React Testing Library 环境搭建
-- [ ] **FE-03**: 12 个 React 组件全部有基础渲染测试
-- [ ] **FE-04**: `App.tsx` 状态机逻辑有测试覆盖
-- [ ] **FE-05**: `lib/wails.ts` mock 工厂可注入任意测试数据
+- [x] **FE-01**: TypeScript strict 模式零错误
+- [x] **FE-02**: Vitest + React Testing Library 环境搭建
+- [x] **FE-03**: 12 个 React 组件全部有基础渲染测试
+- [x] **FE-04**: `App.tsx` 状态机逻辑有测试覆盖
+- [x] **FE-05**: `lib/wails.ts` mock 工厂可注入任意测试数据
 
 ### Integration & Verification
 
@@ -98,16 +98,16 @@ Deferred to future release.
 | CI-02 | Phase 2: CI/CD Infrastructure | Complete |
 | CI-03 | Phase 2: CI/CD Infrastructure | Complete |
 | CI-04 | Phase 2: CI/CD Infrastructure | Complete |
-| GO-01 | Phase 3: Go Backend Test Coverage | Pending |
-| GO-02 | Phase 3: Go Backend Test Coverage | Pending |
-| GO-03 | Phase 3: Go Backend Test Coverage | Pending |
-| GO-04 | Phase 3: Go Backend Test Coverage | Pending |
-| GO-05 | Phase 3: Go Backend Test Coverage | Pending |
-| FE-01 | Phase 4: Frontend Quality | Pending |
-| FE-02 | Phase 4: Frontend Quality | Pending |
-| FE-03 | Phase 4: Frontend Quality | Pending |
-| FE-04 | Phase 4: Frontend Quality | Pending |
-| FE-05 | Phase 4: Frontend Quality | Pending |
+| GO-01 | Phase 3: Go Backend Test Coverage | Complete |
+| GO-02 | Phase 3: Go Backend Test Coverage | Complete |
+| GO-03 | Phase 3: Go Backend Test Coverage | Complete |
+| GO-04 | Phase 3: Go Backend Test Coverage | Complete |
+| GO-05 | Phase 3: Go Backend Test Coverage | Complete |
+| FE-01 | Phase 4: Frontend Quality | Complete |
+| FE-02 | Phase 4: Frontend Quality | Complete |
+| FE-03 | Phase 4: Frontend Quality | Complete |
+| FE-04 | Phase 4: Frontend Quality | Complete |
+| FE-05 | Phase 4: Frontend Quality | Complete |
 | INT-01 | Phase 5: Integration & Verification | Pending |
 | INT-02 | Phase 5: Integration & Verification | Pending |
 | INT-03 | Phase 5: Integration & Verification | Pending |

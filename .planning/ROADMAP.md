@@ -8,8 +8,8 @@ MoveKit is entering a quality-focused milestone. No new user-facing features —
 
 - [x] **Phase 1: Bug Fix Foundation** - Resolve all 8 known bugs with regression tests; complete error handling audit and small improvements (completed 2026-06-20)
 - [x] **Phase 2: CI/CD Infrastructure** - GitHub Actions workflow on windows-latest with lint, test, race detection, and build verification (completed 2026-06-21)
-- [ ] **Phase 3: Go Backend Test Coverage** - Syscall interface abstraction, 80%+ coverage with enforcement gate, zero real-HKCU tests
-- [ ] **Phase 4: Frontend Quality** - TypeScript strict mode, Vitest + RTL infrastructure, component and state machine tests
+- [x] **Phase 3: Go Backend Test Coverage** - Syscall interface abstraction, 80%+ coverage with enforcement gate, zero real-HKCU tests (completed 2026-06-22)
+- [x] **Phase 4: Frontend Quality** - TypeScript strict mode, Vitest + RTL infrastructure, component and state machine tests (completed 2026-06-22)
 - [ ] **Phase 5: Integration & Verification** - Full Migrate+Rollback roundtrip with real NTFS junctions in isolated environments
 
 ## Phase Details
@@ -71,11 +71,11 @@ Plans:
 
 Plans:
 
-- [ ] 03-01-PLAN.md — Syscall interface abstraction layer: 7 interfaces + RealImpl adapter + go.uber.org/mock mocks (implements GO-01, D-01-D-03)
-- [ ] 03-02-PLAN.md — Wire migrate package to use Sys interfaces: refactor all call sites, update existing tests (implements GO-01 wiring)
-- [ ] 03-03-PLAN.md — HIGH priority migrate tests: Migrate() integration, Rollback() integration, moveFilesCrossVolume, PreCheck() 12+ branches (implements GO-03, D-04, D-05)
-- [ ] 03-04-PLAN.md — Remaining migrate tests: CheckJunctionHijack, DetectCloudSync, VerifyIntegrity, state, logger, version, errors, conflict edge cases (implements GO-03, D-06)
-- [ ] 03-05-PLAN.md — app.go non-Wails helper tests + coverage gate verification (implements GO-04 partial, GO-05, D-09, D-10)
+- [x] 03-01-PLAN.md — Syscall interface abstraction layer: 7 interfaces + RealImpl adapter + go.uber.org/mock mocks (implements GO-01, D-01-D-03)
+- [x] 03-02-PLAN.md — Wire migrate package to use Sys interfaces: refactor all call sites, update existing tests (implements GO-01 wiring)
+- [x] 03-03-PLAN.md — HIGH priority migrate tests: Migrate() integration, Rollback() integration, moveFilesCrossVolume, PreCheck() 12+ branches (implements GO-03, D-04, D-05)
+- [x] 03-04-PLAN.md — Remaining migrate tests: CheckJunctionHijack, DetectCloudSync, VerifyIntegrity, state, logger, version, errors, conflict edge cases (implements GO-03, D-06)
+- [x] 03-05-PLAN.md — app.go non-Wails helper tests + coverage gate verification (implements GO-04 partial, GO-05, D-09, D-10)
 
 ### Phase 4: Frontend Quality
 
@@ -113,6 +113,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Bug Fix Foundation | 4/4 | Complete | 2026-06-20 |
 | 2. CI/CD Infrastructure | 2/2 | Complete    | 2026-06-21 |
-| 3. Go Backend Test Coverage | 0/? | Not started | - |
-| 4. Frontend Quality | 0/? | Not started | - |
+| 3. Go Backend Test Coverage | 5/5 | Complete    | 2026-06-22 |
+| 4. Frontend Quality | 1/0 | Complete    | 2026-06-22 |
 | 5. Integration & Verification | 0/? | Not started | - |
