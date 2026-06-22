@@ -4,6 +4,7 @@ go 1.23.5
 
 require (
 	github.com/wailsapp/wails/v2 v2.12.0
+	go.uber.org/mock v0.6.0
 	golang.org/x/sys v0.30.0
 )
 
