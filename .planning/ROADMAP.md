@@ -67,7 +67,15 @@ Plans:
   4. CI rejects any pull request that drops overall coverage below 80% or migrate package coverage below 85%
   5. Zero tests touch the real HKCU registry or leave orphaned NTFS junctions — all tests use TempDir and in-memory fakes
 
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
+
+Plans:
+
+- [ ] 03-01-PLAN.md — Syscall interface abstraction layer: 7 interfaces + RealImpl adapter + go.uber.org/mock mocks (implements GO-01, D-01-D-03)
+- [ ] 03-02-PLAN.md — Wire migrate package to use Sys interfaces: refactor all call sites, update existing tests (implements GO-01 wiring)
+- [ ] 03-03-PLAN.md — HIGH priority migrate tests: Migrate() integration, Rollback() integration, moveFilesCrossVolume, PreCheck() 12+ branches (implements GO-03, D-04, D-05)
+- [ ] 03-04-PLAN.md — Remaining migrate tests: CheckJunctionHijack, DetectCloudSync, VerifyIntegrity, state, logger, version, errors, conflict edge cases (implements GO-03, D-06)
+- [ ] 03-05-PLAN.md — app.go non-Wails helper tests + coverage gate verification (implements GO-04 partial, GO-05, D-09, D-10)
 
 ### Phase 4: Frontend Quality
 
@@ -81,7 +89,7 @@ Plans:
   3. App.tsx state machine transitions (idle -> scanning -> migrating -> complete) are verified by automated tests
   4. `lib/wails.ts` mock factory can inject arbitrary backend responses, enabling any component test scenario
 
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
 
 **UI hint**: yes
 
@@ -97,7 +105,7 @@ Plans:
   3. Wails binding layer smoke test confirms the Go-to-JS bridge works correctly end-to-end
   4. A complete user journey (migrate -> verify contents -> rollback -> verify restoration) passes as a manual or automated smoke test
 
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
 
 ## Progress
 
