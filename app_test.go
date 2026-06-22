@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -22,14 +24,139 @@ func TestDirSize_ValidPath(t *testing.T) {
 }
 
 func TestGetFolders_DirSizeError(t *testing.T) {
-	// Verify that when dirSize encounters an error, the SizeBytes field
-	// is set to -1 (sentinel for "unmeasurable"), not silently defaulted to 0.
-	// This validates the BUG-05 fix by confirming the error path exists.
-	t.Run("dirSize returns error for nonexistent path", func(t *testing.T) {
-		_, err := dirSize(`X:\Missing\Path`)
-		if err == nil {
-			t.Skip("unexpected: path existed (can't test error path)")
+	_, err := dirSize(`X:\Missing\Path`)
+	if err == nil {
+		t.Skip("unexpected: path existed (can't test error path)")
+	}
+}
+
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		sec  int
+		want string
+	}{
+		{0, "0秒"},
+		{30, "30秒"},
+		{60, "1分钟"},
+		{90, "1分30秒"},
+		{3600, "1小时0分钟"},
+		{3661, "1小时1分钟"},
+	}
+	for _, tt := range tests {
+		got := formatDuration(tt.sec)
+		if got != tt.want {
+			t.Errorf("formatDuration(%d) = %q, want %q", tt.sec, got, tt.want)
 		}
-		// If dirSize returns error, the caller in GetFolders should set SizeBytes = -1.
-	})
+	}
+}
+
+func TestPathsEqual(t *testing.T) {
+	if !pathsEqual(`C:\Users\Test`, `C:\Users\Test`) {
+		t.Error("pathsEqual should be true for identical paths")
+	}
+	if pathsEqual(`C:\Users\Test`, `C:\Users\Test2`) {
+		t.Error("pathsEqual should be false for different paths")
+	}
+}
+
+func TestConfigDir(t *testing.T) {
+	orig := os.Getenv("APPDATA")
+	os.Setenv("APPDATA", `C:\Users\Test\AppData\Roaming`)
+	defer os.Setenv("APPDATA", orig)
+
+	dir := configDir()
+	expected := filepath.Join(`C:\Users\Test\AppData\Roaming`, "MoveKit")
+	if dir != expected {
+		t.Errorf("configDir() = %s, want %s", dir, expected)
+	}
+}
+
+func TestConfigDir_FallbackToUserProfile(t *testing.T) {
+	origAppData := os.Getenv("APPDATA")
+	origUserProfile := os.Getenv("USERPROFILE")
+	os.Unsetenv("APPDATA")
+	os.Setenv("USERPROFILE", `C:\Users\Fallback`)
+	defer func() {
+		os.Setenv("APPDATA", origAppData)
+		os.Setenv("USERPROFILE", origUserProfile)
+	}()
+
+	dir := configDir()
+	expected := filepath.Join(`C:\Users\Fallback`, "AppData", "Roaming", "MoveKit")
+	if dir != expected {
+		t.Errorf("configDir() fallback = %s, want %s", dir, expected)
+	}
+}
+
+func TestConfigFilePath(t *testing.T) {
+	orig := os.Getenv("APPDATA")
+	os.Setenv("APPDATA", `C:\Users\Test\AppData\Roaming`)
+	defer os.Setenv("APPDATA", orig)
+
+	path := configFilePath()
+	expected := filepath.Join(`C:\Users\Test\AppData\Roaming`, "MoveKit", "config.json")
+	if path != expected {
+		t.Errorf("configFilePath() = %s, want %s", path, expected)
+	}
+}
+
+func TestGetFirstRunFlag_NoConfig(t *testing.T) {
+	orig := os.Getenv("APPDATA")
+	tmpDir := t.TempDir()
+	os.Setenv("APPDATA", tmpDir)
+	defer os.Setenv("APPDATA", orig)
+
+	app := NewApp()
+	if !app.GetFirstRunFlag() {
+		t.Error("GetFirstRunFlag should return true when no config exists")
+	}
+}
+
+func TestSetFirstRunFlag_RoundTrip(t *testing.T) {
+	orig := os.Getenv("APPDATA")
+	tmpDir := t.TempDir()
+	os.Setenv("APPDATA", tmpDir)
+	defer os.Setenv("APPDATA", orig)
+
+	app := NewApp()
+	err := app.SetFirstRunFlag(false)
+	if err != nil {
+		t.Fatalf("SetFirstRunFlag(false): %v", err)
+	}
+
+	if app.GetFirstRunFlag() {
+		t.Error("GetFirstRunFlag should return false after SetFirstRunFlag(false)")
+	}
+
+	err = app.SetFirstRunFlag(true)
+	if err != nil {
+		t.Fatalf("SetFirstRunFlag(true): %v", err)
+	}
+
+	if !app.GetFirstRunFlag() {
+		t.Error("GetFirstRunFlag should return true after SetFirstRunFlag(true)")
+	}
+}
+
+func TestGetVersion(t *testing.T) {
+	app := NewApp()
+	v := app.GetVersion()
+	if v == "" {
+		t.Error("GetVersion returned empty string")
+	}
+}
+
+func TestHealthCheck(t *testing.T) {
+	app := NewApp()
+	if !app.HealthCheck() {
+		t.Error("HealthCheck should return true")
+	}
+}
+
+func TestResolveConflict_NotImplemented(t *testing.T) {
+	app := NewApp()
+	err := app.ResolveConflict("test/file.txt", "skip")
+	if err == nil {
+		t.Error("ResolveConflict should return NOT_IMPLEMENTED error")
+	}
 }
