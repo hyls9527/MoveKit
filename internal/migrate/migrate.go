@@ -194,7 +194,10 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Shell Folders: REG_SZ (fully expanded).
-	absTarget, _ := filepath.Abs(targetPath) // filepath.Abs on an already-absolute path; fallback to targetPath
+	absTarget, err := filepath.Abs(targetPath)
+	if err != nil {
+		absTarget = targetPath // fallback if Abs fails
+	}
 	if err := sys.WriteString(sys.ShellFoldersKey, regValueName, absTarget); err != nil {
 		log.Error("Failed to update Shell Folders: %v", err)
 		return &MoveKitError{
