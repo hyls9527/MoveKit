@@ -33,11 +33,8 @@ func TestCreateJunction(t *testing.T) {
 		t.Fatalf("Mkdir link: %v", err)
 	}
 
-	// Create the junction. Skip on buffer errors (known issue on some NTFS volumes).
+	// Create the junction.
 	if err := CreateJunction(link, target); err != nil {
-		if strings.Contains(err.Error(), "buffer is invalid") {
-			t.Skipf("junction creation skipped (reparse buffer incompatibility): %v", err)
-		}
 		t.Fatalf("CreateJunction: %v", err)
 	}
 
