@@ -43,10 +43,10 @@ Requirements for this quality-focused milestone.
 
 ### Integration & Verification
 
-- [ ] **INT-01**: `Migrate()` 全流程集成测试（t.TempDir + StubRegistry）
-- [ ] **INT-02**: `Rollback()` 集成测试（纯内存 fake，不动真实注册表）
-- [ ] **INT-03**: Wails 绑定层冒烟测试（真实 Wails runtime）
-- [ ] **INT-04**: 端到端迁移+回滚冒烟测试
+- [x] **INT-01**: `Migrate()` 全流程集成测试（t.TempDir + StubRegistry）
+- [x] **INT-02**: `Rollback()` 集成测试（纯内存 fake，不动真实注册表）
+- [x] **INT-03**: Wails 绑定层冒烟测试（真实 Wails runtime）
+- [x] **INT-04**: 端到端迁移+回滚冒烟测试
 
 ### Improvements
 
@@ -108,10 +108,10 @@ Deferred to future release.
 | FE-03 | Phase 4: Frontend Quality | Complete |
 | FE-04 | Phase 4: Frontend Quality | Complete |
 | FE-05 | Phase 4: Frontend Quality | Complete |
-| INT-01 | Phase 5: Integration & Verification | Pending |
-| INT-02 | Phase 5: Integration & Verification | Pending |
-| INT-03 | Phase 5: Integration & Verification | Pending |
-| INT-04 | Phase 5: Integration & Verification | Pending |
+| INT-01 | Phase 5: Integration & Verification | Complete |
+| INT-02 | Phase 5: Integration & Verification | Complete |
+| INT-03 | Phase 5: Integration & Verification | Complete |
+| INT-04 | Phase 5: Integration & Verification | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total

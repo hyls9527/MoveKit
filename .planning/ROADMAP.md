@@ -10,7 +10,7 @@ MoveKit is entering a quality-focused milestone. No new user-facing features —
 - [x] **Phase 2: CI/CD Infrastructure** - GitHub Actions workflow on windows-latest with lint, test, race detection, and build verification (completed 2026-06-21)
 - [x] **Phase 3: Go Backend Test Coverage** - Syscall interface abstraction, 80%+ coverage with enforcement gate, zero real-HKCU tests (completed 2026-06-22)
 - [x] **Phase 4: Frontend Quality** - TypeScript strict mode, Vitest + RTL infrastructure, component and state machine tests (completed 2026-06-22)
-- [ ] **Phase 5: Integration & Verification** - Full Migrate+Rollback roundtrip with real NTFS junctions in isolated environments
+- [x] **Phase 5: Integration & Verification** - Full Migrate+Rollback roundtrip with real NTFS junctions in isolated environments (completed 2026-06-22)
 
 ## Phase Details
 
@@ -115,4 +115,4 @@ Plans:
 | 2. CI/CD Infrastructure | 2/2 | Complete    | 2026-06-21 |
 | 3. Go Backend Test Coverage | 5/5 | Complete    | 2026-06-22 |
 | 4. Frontend Quality | 1/0 | Complete    | 2026-06-22 |
-| 5. Integration & Verification | 0/? | Not started | - |
+| 5. Integration & Verification | 1/0 | Complete    | 2026-06-22 |
