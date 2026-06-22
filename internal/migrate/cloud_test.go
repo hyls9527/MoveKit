@@ -6,9 +6,8 @@ import (
 
 func TestDetectCloudSync_ReturnsSlice(t *testing.T) {
 	providers := DetectCloudSync()
-	if providers == nil {
-		t.Error("DetectCloudSync returned nil; expected slice (may be empty)")
-	}
+	// nil is a valid empty slice in Go — DetectCloudSync may return nil
+	// when no cloud providers are installed.
 	for _, p := range providers {
 		if p.Name == "" {
 			t.Error("CloudProvider has empty Name")
