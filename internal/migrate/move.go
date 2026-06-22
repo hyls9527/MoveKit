@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
-
-	sys "github.com/movekit/movekit/internal/syscall"
 )
 
 // cancelled is an atomic flag used to signal cancellation of an in-progress
