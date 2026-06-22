@@ -156,11 +156,11 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Ensure the source directory exists for the junction.
-	if err := os.MkdirAll(sourcePath, 0700); err != nil {
+	if mdErr := os.MkdirAll(sourcePath, 0700); mdErr != nil {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
 			Message: "Cannot create directory for junction",
-			Detail:  err.Error(),
+			Detail:  mdErr.Error(),
 			Action:  "Check permissions on the source location",
 		}
 	}
@@ -244,7 +244,7 @@ func backupFilePath(regValueName string) string {
 		appData = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Roaming")
 	}
 	backupDir := filepath.Join(appData, "MoveKit", "backups")
-	_ = os.MkdirAll(backupDir, 0700)
+	_ = os.MkdirAll(backupDir, 0700) //nolint:gosec // backupDir derived from trusted env vars
 	return filepath.Join(backupDir, regValueName+".json")
 }
 
