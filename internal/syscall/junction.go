@@ -4,25 +4,22 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"unsafe"
 )
 
 const (
-	// Reparse tag for NTFS junction points (mount points).
 	IO_REPARSE_TAG_MOUNT_POINT = 0xA0000003
 
-	// DeviceIoControl control codes.
 	FSCTL_SET_REPARSE_POINT    = 0x000900A4
 	FSCTL_GET_REPARSE_POINT    = 0x000900A8
 	FSCTL_DELETE_REPARSE_POINT = 0x000900AC
 
-	// File attribute / creation flags.
 	FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
 	FILE_FLAG_BACKUP_SEMANTICS   = 0x02000000
 
-	// Maximum reparse data buffer size.
 	MAX_REPARSE_SIZE = 16 * 1024
 )
 
@@ -33,7 +30,6 @@ var (
 	procCloseHandle  = modkernel32.NewProc("CloseHandle")
 )
 
-// openReparse opens a directory handle suitable for reparse point operations.
 func openReparse(path string, access uint32, shareMode uint32) (syscall.Handle, error) {
 	p, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
@@ -55,26 +51,10 @@ func openReparse(path string, access uint32, shareMode uint32) (syscall.Handle, 
 	return syscall.Handle(h), nil
 }
 
-// closeHandle is a thin wrapper around CloseHandle.
 func closeHandle(h syscall.Handle) {
 	procCloseHandle.Call(uintptr(h))
 }
 
-// buildReparseBuffer constructs the byte slice for FSCTL_SET_REPARSE_POINT
-// given a substitute name (e.g. "\??\D:\Target") and a print name (e.g. "D:\Target").
-//
-// Layout (REPARSE_DATA_BUFFER for IO_REPARSE_TAG_MOUNT_POINT):
-//
-//	Offset  Size  Field
-//	0       4     ReparseTag         (IO_REPARSE_TAG_MOUNT_POINT)
-//	4       2     ReparseDataLength  (size of everything after this common header)
-//	6       2     Reserved           (0)
-//	-- MountPointReparseBuffer starts here (ReparseDataLength covers from here) --
-//	8       2     SubstituteNameOffset   (0)
-//	10      2     SubstituteNameLength   (in bytes, including NUL)
-//	12      2     PrintNameOffset        (= SubstituteNameLength)
-//	14      2     PrintNameLength        (in bytes, including NUL)
-//	16      var   PathBuffer             (substitute UTF-16 + print UTF-16)
 func buildReparseBuffer(substitute, print string) ([]byte, error) {
 	subUTF16, err := syscall.UTF16FromString(substitute)
 	if err != nil {
@@ -85,28 +65,24 @@ func buildReparseBuffer(substitute, print string) ([]byte, error) {
 		return nil, fmt.Errorf("utf16 print: %w", err)
 	}
 
-	subLen := len(subUTF16) * 2 // bytes INCLUDING NUL terminator (per REPARSE_DATA_BUFFER spec)
+	subLen := len(subUTF16) * 2
 	printLen := len(printUTF16) * 2
 
-	// ReparseDataLength = 8 (mount-point header) + path buffer bytes
-	reparseDataLen := 8 + subLen + printLen // NUL terminators already counted in subLen/printLen
-	totalSize := 8 + reparseDataLen // 8 = common header (tag + dataLen + reserved)
+	reparseDataLen := 8 + subLen + printLen
+	totalSize := 8 + reparseDataLen
 
 	buf := make([]byte, totalSize)
 	le := binary.LittleEndian
 
-	// Common header
 	le.PutUint32(buf[0:], IO_REPARSE_TAG_MOUNT_POINT)
 	le.PutUint16(buf[4:], uint16(reparseDataLen))
-	le.PutUint16(buf[6:], 0) // Reserved
+	le.PutUint16(buf[6:], 0)
 
-	// MountPointReparseBuffer header
-	le.PutUint16(buf[8:], 0)              // SubstituteNameOffset
-	le.PutUint16(buf[10:], uint16(subLen)) // SubstituteNameLength
-	le.PutUint16(buf[12:], uint16(subLen)) // PrintNameOffset (subLen already includes NUL)
-	le.PutUint16(buf[14:], uint16(printLen)) // PrintNameLength
+	le.PutUint16(buf[8:], 0)
+	le.PutUint16(buf[10:], uint16(subLen))
+	le.PutUint16(buf[12:], uint16(subLen))
+	le.PutUint16(buf[14:], uint16(printLen))
 
-	// PathBuffer: substitute then print (already NUL-terminated by UTF16FromString)
 	offset := 16
 	for _, c := range subUTF16 {
 		le.PutUint16(buf[offset:], c)
@@ -120,10 +96,7 @@ func buildReparseBuffer(substitute, print string) ([]byte, error) {
 	return buf, nil
 }
 
-// CreateJunction creates an NTFS junction (mount point) at `linkPath` that points to `targetPath`.
-// The link directory must already exist. The target must be an absolute path.
 func CreateJunction(linkPath, targetPath string) error {
-	// Normalise to absolute.
 	absTarget, err := filepath.Abs(targetPath)
 	if err != nil {
 		return fmt.Errorf("resolve target: %w", err)
@@ -133,7 +106,6 @@ func CreateJunction(linkPath, targetPath string) error {
 		return fmt.Errorf("resolve link: %w", err)
 	}
 
-	// Ensure link directory exists.
 	fi, err := os.Stat(absLink)
 	if err != nil {
 		return fmt.Errorf("stat link: %w", err)
@@ -142,7 +114,6 @@ func CreateJunction(linkPath, targetPath string) error {
 		return fmt.Errorf("link path %s is not a directory", absLink)
 	}
 
-	// Build substitute and print names.
 	substituteName := `\??\` + absTarget
 	printName := absTarget
 
@@ -168,13 +139,23 @@ func CreateJunction(linkPath, targetPath string) error {
 		0,
 	)
 	if r1 == 0 {
-		return fmt.Errorf("DeviceIoControl(FSCTL_SET_REPARSE_POINT): %w", e)
+		_ = closeHandle(h)
+		return createJunctionViaMklink(absLink, absTarget)
 	}
 
 	return nil
 }
 
-// IsJunction returns true if the given path is an NTFS junction point.
+func createJunctionViaMklink(linkPath, targetPath string) error {
+	_ = os.Remove(linkPath)
+	cmd := exec.Command("cmd", "/c", "mklink", "/J", linkPath, targetPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("mklink /J: %w\n%s", err, string(out))
+	}
+	return nil
+}
+
 func IsJunction(path string) bool {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -206,8 +187,6 @@ func IsJunction(path string) bool {
 	return tag == IO_REPARSE_TAG_MOUNT_POINT
 }
 
-// DeleteJunction removes the NTFS junction point at `linkPath`.
-// The directory itself is NOT deleted — only the reparse point attribute is cleared.
 func DeleteJunction(linkPath string) error {
 	absLink, err := filepath.Abs(linkPath)
 	if err != nil {
@@ -220,12 +199,11 @@ func DeleteJunction(linkPath string) error {
 	}
 	defer closeHandle(h)
 
-	// For delete, we pass a small buffer with the tag and zero data length.
 	var deleteBuf [8]byte
 	le := binary.LittleEndian
 	le.PutUint32(deleteBuf[0:], IO_REPARSE_TAG_MOUNT_POINT)
-	le.PutUint16(deleteBuf[4:], 0) // ReparseDataLength
-	le.PutUint16(deleteBuf[6:], 0) // Reserved
+	le.PutUint16(deleteBuf[4:], 0)
+	le.PutUint16(deleteBuf[6:], 0)
 
 	var bytesReturned uint32
 	r1, _, e := procDeviceIoCtrl.Call(
