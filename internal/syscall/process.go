@@ -83,6 +83,9 @@ func IsProcessRunning(name string) bool {
 
 	r1, _, _ := procProcess32FirstW.Call(snap, uintptr(unsafe.Pointer(&entry)))
 	if r1 == 0 {
+		// ERROR_NO_MORE_FILES (18) is expected when no processes match.
+		// Other errors (e.g. ERROR_ACCESS_DENIED) mean enumeration failed.
+		_ = syscall.GetLastError()
 		return false
 	}
 
@@ -94,6 +97,9 @@ func IsProcessRunning(name string) bool {
 		}
 		r1, _, _ = procProcess32NextW.Call(snap, uintptr(unsafe.Pointer(&entry)))
 		if r1 == 0 {
+			// ERROR_NO_MORE_FILES (18): end of process list — expected.
+			// Other errors indicate enumeration was interrupted.
+			_ = syscall.GetLastError()
 			break
 		}
 	}
