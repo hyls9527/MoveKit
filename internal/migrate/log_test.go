@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestMaskPath(t *testing.T) {
+func TestMaskPath_Log(t *testing.T) {
 	userProfile := "C:\\Users\\TestUser"
 	path := userProfile + "\\Desktop\\MyFolder"
 	masked := maskPath(path)
@@ -15,7 +15,7 @@ func TestMaskPath(t *testing.T) {
 	t.Logf("maskPath: %s -> %s", path, masked)
 }
 
-func TestMaskPath_NoUserProfile(t *testing.T) {
+func TestMaskPath_NoUserProfile_Log(t *testing.T) {
 	result := maskPath("C:\\SomePath")
 	if result == "" {
 		t.Error("maskPath returned empty string")

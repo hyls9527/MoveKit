@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
 	"golang.org/x/sys/windows/registry"
-
-	sys "github.com/movekit/movekit/internal/syscall"
 )
 
 // dirSize returns the total size in bytes of all files under dir.

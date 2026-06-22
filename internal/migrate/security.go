@@ -3,8 +3,6 @@ package migrate
 import (
 	"os"
 	"path/filepath"
-
-	sys "github.com/movekit/movekit/internal/syscall"
 )
 
 // CheckJunctionHijack checks if the target path is already a junction or
