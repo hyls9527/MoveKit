@@ -37,7 +37,7 @@ func CheckJunctionHijack(targetPath string) *MoveKitError {
 	}
 
 	// Also check using the Windows-native IsJunction.
-	if sys.IsJunction(targetPath) {
+	if Sys.Junction.IsJunction(targetPath) {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
 			Message: "Target path is an NTFS junction point",

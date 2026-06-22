@@ -39,7 +39,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	log.Info("Starting migration of %s to %s", regValueName, targetDrive)
 
 	// 1. Get the actual source path from registry (not hardcoded).
-	sourcePath, err := sys.ReadExpandString(sys.UserShellFoldersKey, regValueName)
+	sourcePath, err := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, regValueName)
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
@@ -55,7 +55,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 
 	// 2. Chain migration: if source is already a junction, resolve to the real target.
 	actualSource := sourcePath
-	if sys.IsJunction(sourcePath) {
+	if Sys.Junction.IsJunction(sourcePath) {
 		log.Info("Source is already a junction, resolving real target")
 		junctionTarget, err := resolveJunctionTarget(sourcePath)
 		if err != nil {
@@ -128,7 +128,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	log.Info("Moving files from %s to %s", maskPath(actualSource), maskPath(targetPath))
-	if sys.IsCrossVolume(actualSource, targetPath) {
+	if Sys.Volume.IsCrossVolume(actualSource, targetPath) {
 		// Cross-volume: copy + delete.
 		if err := moveFilesCrossVolume(actualSource, targetPath, onProgress, regValueName); err != nil {
 			log.Error("Cross-volume move failed: %v", err)
@@ -149,8 +149,8 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 
 	// 6. Create junction at original location.
 	// If source was already a junction, delete it first so we can create a new one.
-	if sys.IsJunction(sourcePath) {
-		if err := sys.DeleteJunction(sourcePath); err != nil {
+	if Sys.Junction.IsJunction(sourcePath) {
+		if err := Sys.Junction.DeleteJunction(sourcePath); err != nil {
 			log.Warn("Failed to delete old junction: %v", err)
 		}
 	}
@@ -165,7 +165,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 		}
 	}
 
-	if err := sys.CreateJunction(sourcePath, targetPath); err != nil {
+	if err := Sys.Junction.CreateJunction(sourcePath, targetPath); err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
 			Message: "Failed to create junction point",
@@ -178,7 +178,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	// 7. Update registry.
 	// User Shell Folders: REG_SZ (fully expanded path, no env vars)
 	regValue := fmt.Sprintf("%s\\%s", driveLetter+":", folderName)
-	if regErr := sys.WriteString(sys.UserShellFoldersKey, regValueName, regValue); regErr != nil {
+	if regErr := Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, regValue); regErr != nil {
 		log.Error("Failed to update User Shell Folders: %v", regErr)
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
@@ -193,7 +193,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	if err != nil {
 		absTarget = targetPath // fallback if Abs fails
 	}
-	if err := sys.WriteString(sys.ShellFoldersKey, regValueName, absTarget); err != nil {
+	if err := Sys.Registry.WriteString(sys.ShellFoldersKey, regValueName, absTarget); err != nil {
 		log.Error("Failed to update Shell Folders: %v", err)
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
@@ -205,8 +205,8 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	log.Info("Registry updated for %s", regValueName)
 
 	// 8. Notify Shell.
-	sys.NotifyFolderRenamed(sourcePath, targetPath)
-	sys.NotifyDirUpdated(filepath.Dir(sourcePath))
+	Sys.Shell.NotifyFolderRenamed(sourcePath, targetPath)
+	Sys.Shell.NotifyDirUpdated(filepath.Dir(sourcePath))
 	log.Info("Shell notifications sent")
 
 	// 9. Mark backup complete.

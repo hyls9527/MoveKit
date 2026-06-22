@@ -26,8 +26,8 @@ func Rollback(folderName string) error {
 	}
 
 	// 2. Delete junction at original path if it is one.
-	if sys.IsJunction(rec.OriginalPath) {
-		if err := sys.DeleteJunction(rec.OriginalPath); err != nil {
+	if Sys.Junction.IsJunction(rec.OriginalPath) {
+		if err := Sys.Junction.DeleteJunction(rec.OriginalPath); err != nil {
 			return &MoveKitError{
 				Code:    ErrCodeJunctionFailed,
 				Message: "Failed to remove junction during rollback",
@@ -62,7 +62,7 @@ func Rollback(folderName string) error {
 
 	// 4. Restore registry values.
 	// Write the original path back to User Shell Folders.
-	if err := sys.WriteExpandString(sys.UserShellFoldersKey, rec.RegValueName, rec.OriginalPath); err != nil {
+	if err := Sys.Registry.WriteExpandString(sys.UserShellFoldersKey, rec.RegValueName, rec.OriginalPath); err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
 			Message: "Failed to restore User Shell Folders registry during rollback",
@@ -73,7 +73,7 @@ func Rollback(folderName string) error {
 
 	// Write the original path back to Shell Folders.
 	absOriginal, _ := filepath.Abs(rec.OriginalPath)
-	if err := sys.WriteString(sys.ShellFoldersKey, rec.RegValueName, absOriginal); err != nil {
+	if err := Sys.Registry.WriteString(sys.ShellFoldersKey, rec.RegValueName, absOriginal); err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
 			Message: "Failed to restore Shell Folders registry during rollback",

@@ -30,7 +30,7 @@ func DetectOneDriveKFM() (*OneDriveStatus, error) {
 	}
 
 	// 2. Check OneDrive's own KFM tracking key.
-	kfmAll, err := sys.ReadInteger(
+	kfmAll, err := Sys.Registry.ReadInteger(
 		`SOFTWARE\Microsoft\OneDrive\Accounts\Personal`,
 		"KfmFoldersMovedAll",
 	)
@@ -39,7 +39,7 @@ func DetectOneDriveKFM() (*OneDriveStatus, error) {
 	}
 
 	// 3. Check GPO block on KFM opt-out.
-	gpoVal, err := sys.ReadInteger(
+	gpoVal, err := Sys.Registry.ReadInteger(
 		`SOFTWARE\Policies\Microsoft\OneDrive`,
 		"KFMBlockOptOut",
 	)
@@ -67,7 +67,7 @@ func scanShellFoldersForOneDrive() ([]string, error) {
 
 	var onedriveFolders []string
 	for _, valName := range knownValues {
-		path, err := sys.ReadExpandString(sys.UserShellFoldersKey, valName)
+		path, err := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, valName)
 		if err != nil {
 			continue
 		}

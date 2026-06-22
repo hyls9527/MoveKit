@@ -133,7 +133,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 		}
 
 		// Copy the file using Windows CopyFileExW with ACL preservation.
-		if err := sys.CopyFileWithACL(path, dstPath, nil); err != nil {
+		if err := Sys.File.CopyFileWithACL(path, dstPath, nil); err != nil {
 			return fmt.Errorf("copy %s: %w", relPath, err)
 		}
 
