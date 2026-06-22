@@ -57,9 +57,6 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	actualSource := sourcePath
 	if sys.IsJunction(sourcePath) {
 		log.Info("Source is already a junction, resolving real target")
-		// Resolve the junction target by reading the reparse point.
-		// For now we use the directory contents — the junction target is where
-		// the files actually live. We'll read the reparse data to get the target.
 		junctionTarget, err := resolveJunctionTarget(sourcePath)
 		if err != nil {
 			return &MoveKitError{
@@ -88,13 +85,13 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// 3. PreCheck.
-	if err := PreCheck(actualSource, driveLetter); err != nil {
-		if err.Code == "SECURITY_SOFTWARE_DETECTED" {
-			log.Warn("检测到安全软件: %s，继续迁移", err.Warning)
+	if preErr := PreCheck(actualSource, driveLetter); preErr != nil {
+		if preErr.Code == "SECURITY_SOFTWARE_DETECTED" {
+			log.Warn("检测到安全软件: %s，继续迁移", preErr.Warning)
 			// Non-blocking: proceed with migration despite AV detection
 		} else {
-			log.Error("PreCheck failed: %s — %s", err.Code, err.Detail)
-			return err
+			log.Error("PreCheck failed: %s — %s", preErr.Code, preErr.Detail)
+			return preErr
 		}
 	}
 
@@ -102,8 +99,6 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	conflicts, _ := DetectConflicts(actualSource, targetPath) // intentional: conflicts are logged but do not block migration (per MVP behavior)
 	if len(conflicts) > 0 {
 		log.Warn("Found %d file conflicts", len(conflicts))
-		// For MVP: log conflicts but proceed (user already confirmed)
-		// Future: emit conflict event and wait for user decision
 	}
 
 	// 4. Save backup record (status=in_progress).
@@ -161,7 +156,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Ensure the source directory exists for the junction.
-	if err := os.MkdirAll(sourcePath, 0777); err != nil {
+	if err := os.MkdirAll(sourcePath, 0700); err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
 			Message: "Cannot create directory for junction",
@@ -183,12 +178,12 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	// 7. Update registry.
 	// User Shell Folders: REG_SZ (fully expanded path, no env vars)
 	regValue := fmt.Sprintf("%s\\%s", driveLetter+":", folderName)
-	if err := sys.WriteString(sys.UserShellFoldersKey, regValueName, regValue); err != nil {
-		log.Error("Failed to update User Shell Folders: %v", err)
+	if regErr := sys.WriteString(sys.UserShellFoldersKey, regValueName, regValue); regErr != nil {
+		log.Error("Failed to update User Shell Folders: %v", regErr)
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
 			Message: "Failed to update User Shell Folders registry",
-			Detail:  err.Error(),
+			Detail:  regErr.Error(),
 			Action:  "The files were moved but the registry was not updated. Run as administrator.",
 		}
 	}
@@ -249,7 +244,7 @@ func backupFilePath(regValueName string) string {
 		appData = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Roaming")
 	}
 	backupDir := filepath.Join(appData, "MoveKit", "backups")
-	os.MkdirAll(backupDir, 0777)
+	_ = os.MkdirAll(backupDir, 0700)
 	return filepath.Join(backupDir, regValueName+".json")
 }
 
@@ -266,12 +261,6 @@ func saveBackup(path string, record BackupRecord) error {
 // resolveJunctionTarget reads the reparse point to find where a junction points to.
 // Falls back to checking if the directory is accessible (non-junction case).
 func resolveJunctionTarget(junctionPath string) (string, error) {
-	// Walk into the junction to discover files — if it's a valid junction,
-	// files inside are actually at the target location.
-	// We use a heuristic: read the first file's real path to extract the volume.
-	// A proper implementation would use DeviceIoControl/FSCTL_GET_REPARSE_POINT.
-
-	// Simple approach: use filepath.EvalSymlinks which resolves junctions on Windows.
 	resolved, err := filepath.EvalSymlinks(junctionPath)
 	if err != nil {
 		return "", fmt.Errorf("resolve junction %s: %w", junctionPath, err)
