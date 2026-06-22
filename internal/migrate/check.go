@@ -78,7 +78,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if len(driveLetter) >= 2 && driveLetter[1] == ':' {
 		driveLetter = driveLetter[:1]
 	}
-	volInfo, err := sys.GetVolumeInfo(driveLetter)
+	volInfo, err := Sys.Volume.GetVolumeInfo(driveLetter)
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeFileSystemNotNTFS,
@@ -125,7 +125,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 		}
 	}
 
-	freeBytes, _, _, err := sys.GetDiskFreeSpace(driveLetter)
+	freeBytes, _, _, err := Sys.Volume.GetDiskFreeSpace(driveLetter)
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeSpaceInsufficient,
@@ -196,7 +196,7 @@ func checkBitLocker(drive string) *MoveKitError {
 // checkControlledFolderAccess checks whether Windows Controlled Folder Access
 // (ransomware protection) is enabled, which may block file operations.
 func checkControlledFolderAccess() *MoveKitError {
-	val, err := sys.ReadIntegerLM(
+	val, err := Sys.Registry.ReadIntegerLM(
 		`SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection`,
 		"EnableControlledFolderAccess",
 	)
@@ -219,7 +219,7 @@ func checkControlledFolderAccess() *MoveKitError {
 func checkWindowsUpdate() *MoveKitError {
 	// Check the standard pending-reboot registry key.
 	keyPath := `SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update`
-	_, err := sys.ReadIntegerLM(keyPath, "RebootRequired")
+	_, err := Sys.Registry.ReadIntegerLM(keyPath, "RebootRequired")
 	if err == nil {
 		return &MoveKitError{
 			Code:    ErrCodeWindowsUpdate,
@@ -234,7 +234,7 @@ func checkWindowsUpdate() *MoveKitError {
 // checkBattery warns if the system is running on battery power, since
 // cross-volume migration may take a long time.
 func checkBattery() *MoveKitError {
-	if sys.IsOnBattery() {
+	if Sys.Power.IsOnBattery() {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
 			Message: "笔记本未接电源",
@@ -259,7 +259,7 @@ func detectSecuritySoftware() string {
 		"bdagent.exe": "Bitdefender",
 	}
 	for proc, name := range knownAVs {
-		if sys.IsProcessRunning(proc) {
+		if Sys.Process.IsProcessRunning(proc) {
 			return name
 		}
 	}
