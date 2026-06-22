@@ -161,7 +161,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Ensure the source directory exists for the junction.
-	if err := os.MkdirAll(sourcePath, 0755); err != nil {
+	if err := os.MkdirAll(sourcePath, 0777); err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
 			Message: "Cannot create directory for junction",
@@ -249,7 +249,7 @@ func backupFilePath(regValueName string) string {
 		appData = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Roaming")
 	}
 	backupDir := filepath.Join(appData, "MoveKit", "backups")
-	os.MkdirAll(backupDir, 0755)
+	os.MkdirAll(backupDir, 0777)
 	return filepath.Join(backupDir, regValueName+".json")
 }
 
