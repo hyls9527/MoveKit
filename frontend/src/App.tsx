@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, DiskInfo, FolderInfo, ProgressInfo } from './types';
-import { GetFolders, GetDisks, HealthCheck, StartMigration, Rollback, CheckOneDriveKFM, GetVersion, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
+import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, GetVersion, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
 import DiskSelector from './components/DiskSelector';
 import FolderList from './components/FolderList';
 import ProgressBar from './components/ProgressBar';
@@ -36,9 +36,9 @@ function AppInner() {
   const [showOneDriveWarning, setShowOneDriveWarning] = useState(false);
   const [oneDriveFolders, setOneDriveFolders] = useState<string[]>([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
-  const [conflicts, setConflicts] = useState<ConflictFile[]>([]);
+  const [conflicts] = useState<ConflictFile[]>([]);
   const [showCloudWarning, setShowCloudWarning] = useState(false);
-  const [cloudProviders, setCloudProviders] = useState<string[]>([]);
+  const [cloudProviders] = useState<string[]>([]);
   const [showDefenderInfo, setShowDefenderInfo] = useState(false);
   const [showUpdateNotice, setShowUpdateNotice] = useState(false);
   const [updateInfo, setUpdateInfo] = useState({ currentVersion: '', newVersion: '', downloadUrl: '' });
@@ -74,11 +74,6 @@ function AppInner() {
   }, []);
   useHeartbeat({ enabled: state === 'migrating', onDead: handleDead });
 
-  // Initial load
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = useCallback(async () => {
     setState('checking');
     try {
@@ -91,6 +86,11 @@ function AppInner() {
       setState('failed');
     }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleStart = async () => {
     if (!selectedDisk) return;
@@ -157,7 +157,7 @@ function AppInner() {
       unsubProgress();
       unsubDone();
     };
-  }, [state]);
+  }, [state, selectedDisk]);
 
   const handleRollback = async (folderName: string) => {
     try {
