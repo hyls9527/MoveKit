@@ -129,7 +129,7 @@ func CreateJunction(linkPath, targetPath string) error {
 	defer closeHandle(h)
 
 	var bytesReturned uint32
-	r1, _, e := procDeviceIoCtrl.Call(
+	r1, _, _ := procDeviceIoCtrl.Call(
 		uintptr(h),
 		uintptr(FSCTL_SET_REPARSE_POINT),
 		uintptr(unsafe.Pointer(&buf[0])),
@@ -139,7 +139,8 @@ func CreateJunction(linkPath, targetPath string) error {
 		0,
 	)
 	if r1 == 0 {
-		_ = closeHandle(h)
+		// Note: do NOT close handle here — defer closeHandle(h) above handles cleanup.
+		// Double-closing a Windows handle is undefined behavior.
 		return createJunctionViaMklink(absLink, absTarget)
 	}
 
@@ -147,7 +148,7 @@ func CreateJunction(linkPath, targetPath string) error {
 }
 
 func createJunctionViaMklink(linkPath, targetPath string) error {
-	_ = os.Remove(linkPath)
+	_ = os.RemoveAll(linkPath)
 	cmd := exec.Command("cmd", "/c", "mklink", "/J", linkPath, targetPath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

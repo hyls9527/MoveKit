@@ -3,7 +3,6 @@ package winsyscall
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
