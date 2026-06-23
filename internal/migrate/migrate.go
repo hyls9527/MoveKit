@@ -86,7 +86,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 
 	// 3. PreCheck.
 	if preErr := PreCheck(actualSource, driveLetter); preErr != nil {
-		if preErr.Code == "SECURITY_SOFTWARE_DETECTED" {
+		if preErr.Code == ErrCodeSecuritySoftware {
 			log.Warn("检测到安全软件: %s，继续迁移", preErr.Warning)
 			// Non-blocking: proceed with migration despite AV detection
 		} else {
@@ -135,14 +135,16 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 			return err
 		}
 	} else {
-		// Same-volume: atomic rename.
-		if err := os.Rename(actualSource, targetPath); err != nil {
-			return &MoveKitError{
-				Code:    ErrCodeFileLocked,
-				Message: "Failed to move folder (files may be locked)",
-				Detail:  err.Error(),
-				Action:  "Close any programs using files in this folder and retry",
+		// Same-volume: use moveFilesSameVolume for better error handling.
+		var svProgress func(ProgressInfo)
+		if onProgress != nil {
+			svProgress = func(pi ProgressInfo) {
+				onProgress(regValueName, pi.Phase, 0, 0, 0, 0)
 			}
+		}
+		if err := moveFilesSameVolume(actualSource, targetPath, svProgress); err != nil {
+			log.Error("Same-volume move failed: %v", err)
+			return err
 		}
 	}
 	log.Info("Files moved successfully")

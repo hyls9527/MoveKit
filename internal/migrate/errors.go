@@ -18,6 +18,8 @@ const (
 	ErrCodeOneDriveSync      = "ONEDRIVE_SYNC"
 	ErrCodeGPORestricted     = "GPO_RESTRICTED"
 	ErrCodeTargetInSource    = "TARGET_IN_SOURCE"
+	ErrCodeSecuritySoftware  = "SECURITY_SOFTWARE_DETECTED"
+	ErrCodeBatteryWarning    = "BATTERY_WARNING"
 )
 
 type MoveKitError struct {
