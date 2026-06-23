@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"golang.org/x/sys/windows/registry"
 )
 
 // dirSize returns the total size in bytes of all files under dir.
@@ -154,7 +153,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	// 6. Warn about detected security software (informational, non-blocking).
 	if detectedAV != "" {
 		return &MoveKitError{
-			Code:    "SECURITY_SOFTWARE_DETECTED",
+			Code:    ErrCodeSecuritySoftware,
 			Message: fmt.Sprintf("检测到安全软件: %s", detectedAV),
 			Detail:  "安全软件可能会干扰 junction 创建或文件操作",
 			Action:  "建议暂时关闭实时防护后再迁移",
@@ -166,27 +165,12 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 }
 
 // checkBitLocker checks whether BitLocker encryption is active on the given drive.
-// Uses registry detection. Returns nil if BitLocker is not configured or not locked.
+//
+// STUB: Always returns nil. Real BitLocker protection status detection requires
+// WMI (Win32_EncryptableVolume) or DeviceIoControl(IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS).
+// Neither is implemented yet — see .planning/codebase/CONCERNS.md.
 func checkBitLocker(drive string) *MoveKitError {
-	// Normalize drive letter.
-	dl := drive
-	if len(dl) >= 2 && dl[1] == ':' {
-		dl = dl[:1]
-	}
-	// Check the standard BitLocker registry key under HKLM.
-	keyPath := `SOFTWARE\Microsoft\Windows\CurrentVersion\BitLocker`
-	k, err := registry.OpenKey(registry.LOCAL_MACHINE, keyPath, registry.READ)
-	if err != nil {
-		return nil // key doesn't exist, BitLocker not configured
-	}
-	defer k.Close()
-
-	// Try to read a subkey for the specific drive. If BitLocker is configured
-	// but we can't determine the protection status, assume OK (not locked).
-	// A full implementation would use Win32_EncryptableVolume WMI or
-	// DeviceIoControl with IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS.
-	// TODO: implement full BitLocker protection status check via WMI.
-	_ = dl
+	_ = drive
 	return nil
 }
 
@@ -233,7 +217,7 @@ func checkWindowsUpdate() *MoveKitError {
 func checkBattery() *MoveKitError {
 	if Sys.Power.IsOnBattery() {
 		return &MoveKitError{
-			Code:    ErrCodePermissionDenied,
+			Code:    ErrCodeBatteryWarning,
 			Message: "笔记本未接电源",
 			Detail:  "跨卷迁移可能耗时较长，建议连接电源适配器",
 			Action:  "请连接电源适配器后再迁移（也可忽略此警告继续）",
