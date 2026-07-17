@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	sys "github.com/movekit/movekit/internal/syscall"
@@ -70,11 +71,19 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 		log.Info("Junction resolves to: %s", maskPath(actualSource))
 	}
 
-	// Determine target path.
-	driveLetter := targetDrive
-	if len(driveLetter) >= 2 && driveLetter[1] == ':' {
-		driveLetter = driveLetter[:1]
-	}
+	// Validate drive letter.
+		driveLetter := targetDrive
+		if len(driveLetter) >= 2 && driveLetter[1] == ':' {
+			driveLetter = driveLetter[:1]
+		}
+		if len(driveLetter) != 1 || driveLetter[0] < 'A' || driveLetter[0] > 'Z' {
+			return &MoveKitError{
+				Code:    ErrCodePermissionDenied,
+				Message: "无效的目标盘符",
+				Detail:  fmt.Sprintf("收到: %q", targetDrive),
+				Action:  "请选择 A-Z 之间的盘符",
+			}
+		}
 	folderName := filepath.Base(actualSource)
 	targetPath := filepath.Join(driveLetter+":\\", folderName)
 	log.Info("Target path: %s", maskPath(targetPath))
@@ -96,10 +105,19 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Check for file conflicts before moving.
-	conflicts, _ := DetectConflicts(actualSource, targetPath) // intentional: conflicts are logged but do not block migration (per MVP behavior)
-	if len(conflicts) > 0 {
-		log.Warn("Found %d file conflicts", len(conflicts))
-	}
+		conflicts, err := DetectConflicts(actualSource, targetPath)
+		if err != nil {
+			log.Warn("Conflict detection failed: %v", err)
+		}
+		if len(conflicts) > 0 {
+			log.Error("Found %d file conflicts, blocking migration", len(conflicts))
+			return &MoveKitError{
+				Code:    ErrCodeTargetExists,
+				Message: fmt.Sprintf("目标路径存在 %d 个同名文件", len(conflicts)),
+				Detail:  fmt.Sprintf("冲突文件数: %d", len(conflicts)),
+				Action:  "请先手动删除目标路径中的同名文件，或选择其他盘符",
+			}
+		}
 
 	// 4. Save backup record (status=in_progress).
 	backupPath := backupFilePath(regValueName)
@@ -149,44 +167,98 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 	log.Info("Files moved successfully")
 
-	// 6. Create junction at original location.
-	// If source was already a junction, delete it first so we can create a new one.
+	// 6. Create junction at original location (atomic-safe strategy).
+	junctionCreated := false
+
+	// Step A: Check if existing junction already points to our target.
 	if Sys.Junction.IsJunction(sourcePath) {
-		if err := Sys.Junction.DeleteJunction(sourcePath); err != nil {
-			log.Warn("Failed to delete old junction: %v", err)
+		existingTarget, resolveErr := resolveJunctionTarget(sourcePath)
+		if resolveErr == nil && strings.EqualFold(existingTarget, targetPath) {
+			log.Info("Existing junction already points to target, skipping recreation")
+			junctionCreated = true
+		} else {
+			// Junction points elsewhere or is broken; delete it
+			log.Info("Deleting old junction (points to %s)", maskPath(existingTarget))
+			if delErr := Sys.Junction.DeleteJunction(sourcePath); delErr != nil {
+				log.Warn("Failed to delete old junction: %v", delErr)
+			}
 		}
 	}
 
-	// Ensure the source directory exists for the junction.
-	if mdErr := os.MkdirAll(sourcePath, 0700); mdErr != nil {
-		return &MoveKitError{
-			Code:    ErrCodeJunctionFailed,
-			Message: "Cannot create directory for junction",
-			Detail:  mdErr.Error(),
-			Action:  "Check permissions on the source location",
+	// Step B: Create junction if not already correct.
+	if !junctionCreated {
+		tempJunction := sourcePath + ".movekit_tmp"
+		// Clean up any leftover temp junction
+		os.Remove(tempJunction)
+
+		// Create temp directory for junction
+		if mdErr := os.MkdirAll(tempJunction, 0700); mdErr != nil {
+			return &MoveKitError{
+				Code:    ErrCodeJunctionFailed,
+				Message: "无法创建临时目录",
+				Detail:  mdErr.Error(),
+				Action:  "检查源路径的写入权限",
+			}
 		}
+
+		// Create junction at temp location
+		if err := Sys.Junction.CreateJunction(tempJunction, targetPath); err != nil {
+			os.Remove(tempJunction)
+			return &MoveKitError{
+				Code:    ErrCodeJunctionFailed,
+				Message: "无法创建临时 junction",
+				Detail:  err.Error(),
+				Action:  "检查目标路径是否存在",
+			}
+		}
+
+		// Verify temp junction points correctly
+		resolved, resolveErr := resolveJunctionTarget(tempJunction)
+		if resolveErr != nil || !strings.EqualFold(resolved, targetPath) {
+			Sys.Junction.DeleteJunction(tempJunction)
+			os.Remove(tempJunction)
+			return &MoveKitError{
+				Code:    ErrCodeJunctionFailed,
+				Message: "Junction 验证失败",
+				Detail:  fmt.Sprintf("期望 %s，实际 %s", targetPath, resolved),
+				Action:  "请检查 NTFS 文件系统是否正常",
+			}
+		}
+
+		// Ensure source directory doesn't exist (remove if it does)
+		if _, statErr := os.Stat(sourcePath); statErr == nil {
+			// Source exists but is not a junction (shouldn't happen after move)
+			os.Remove(sourcePath)
+		}
+
+		// Atomic swap: rename temp junction to source path
+		if renameErr := os.Rename(tempJunction, sourcePath); renameErr != nil {
+			Sys.Junction.DeleteJunction(tempJunction)
+			os.Remove(tempJunction)
+			return &MoveKitError{
+				Code:    ErrCodeJunctionFailed,
+				Message: "Junction 替换失败",
+				Detail:  renameErr.Error(),
+				Action:  "请手动检查源路径状态",
+			}
+		}
+
+		log.Info("Junction created atomically: %s -> %s", maskPath(sourcePath), maskPath(targetPath))
 	}
 
-	if err := Sys.Junction.CreateJunction(sourcePath, targetPath); err != nil {
-		return &MoveKitError{
-			Code:    ErrCodeJunctionFailed,
-			Message: "Failed to create junction point",
-			Detail:  err.Error(),
-			Action:  "Ensure the source directory exists and you have write permission",
-		}
-	}
-	log.Info("Junction created: %s -> %s", maskPath(sourcePath), maskPath(targetPath))
+	// 7. Update registry (with rollback on partial failure).
+	// Backup old values first.
+	oldUserShell, _ := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, regValueName)
 
-	// 7. Update registry.
 	// User Shell Folders: REG_SZ (fully expanded path, no env vars)
 	regValue := fmt.Sprintf("%s\\%s", driveLetter+":", folderName)
 	if regErr := Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, regValue); regErr != nil {
 		log.Error("Failed to update User Shell Folders: %v", regErr)
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
-			Message: "Failed to update User Shell Folders registry",
+			Message: "注册表 User Shell Folders 写入失败",
 			Detail:  regErr.Error(),
-			Action:  "The files were moved but the registry was not updated. Run as administrator.",
+			Action:  "文件已移动但注册表未更新，请以管理员身份运行",
 		}
 	}
 
@@ -195,13 +267,17 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	if err != nil {
 		absTarget = targetPath // fallback if Abs fails
 	}
-	if err := Sys.Registry.WriteString(sys.ShellFoldersKey, regValueName, absTarget); err != nil {
-		log.Error("Failed to update Shell Folders: %v", err)
+	if regErr := Sys.Registry.WriteString(sys.ShellFoldersKey, regValueName, absTarget); regErr != nil {
+		log.Error("Failed to update Shell Folders: %v — rolling back User Shell Folders", regErr)
+		// Rollback the first write
+		if oldUserShell != "" {
+			Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, oldUserShell)
+		}
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
-			Message: "Failed to update Shell Folders registry",
-			Detail:  err.Error(),
-			Action:  "The files were moved but the registry was not updated. Run as administrator.",
+			Message: "注册表 Shell Folders 写入失败（已回滚 User Shell Folders）",
+			Detail:  regErr.Error(),
+			Action:  "文件已移动但注册表未更新，请以管理员身份运行",
 		}
 	}
 	log.Info("Registry updated for %s", regValueName)

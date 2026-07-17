@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 )
 
-// dirSize returns the total size in bytes of all files under dir.
-func dirSize(dir string) (int64, error) {
+// DirSize returns the total size in bytes of all files under dir.
+func DirSize(dir string) (int64, error) {
 	var size int64
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -111,7 +111,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	}
 
 	// 4. Space must be sufficient.
-	srcSize, err := dirSize(sourcePath)
+	srcSize, err := DirSize(sourcePath)
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,

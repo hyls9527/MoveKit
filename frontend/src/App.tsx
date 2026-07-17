@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, DiskInfo, FolderInfo, ProgressInfo } from './types';
 import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, GetVersion, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
 import DiskSelector from './components/DiskSelector';
+import { ErrorBoundary as SectionErrorBoundary } from './components/ErrorBoundary';
 import FolderList from './components/FolderList';
 import ProgressBar from './components/ProgressBar';
 import ResultPage from './components/ResultPage';
@@ -36,7 +37,7 @@ function AppInner() {
   const [showOneDriveWarning, setShowOneDriveWarning] = useState(false);
   const [oneDriveFolders, setOneDriveFolders] = useState<string[]>([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
-  const [conflicts] = useState<ConflictFile[]>([]);
+  const [conflicts, setConflicts] = useState<ConflictFile[]>([]);
   const [showCloudWarning, setShowCloudWarning] = useState(false);
   const [cloudProviders] = useState<string[]>([]);
   const [showDefenderInfo, setShowDefenderInfo] = useState(false);
@@ -121,6 +122,16 @@ function AppInner() {
   };
 
   const handleCancel = async () => {
+    const confirmed = window.confirm(
+      '确定要取消迁移吗？
+
+' +
+      '跨卷迁移中途取消可能导致部分文件已复制、部分未复制的不一致状态。
+' +
+      '建议等待迁移完成后再回滚。'
+    );
+    if (!confirmed) return;
+
     try {
       await CancelMigration();
     } catch {
@@ -238,9 +249,11 @@ function AppInner() {
           <>
             <FolderList folders={folders} />
 
+            <SectionErrorBoundary>
             <div className="p-4 rounded-fluent bg-card border border-border">
               <DiskSelector disks={disks} selected={selectedDisk} onSelect={setSelectedDisk} />
             </div>
+            </SectionErrorBoundary>
 
             {totalSize > 0 && selectedDisk && (
               <div className="p-4 rounded-fluent bg-accent/5 border border-accent/10">
