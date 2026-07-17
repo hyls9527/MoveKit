@@ -52,6 +52,8 @@ func NewApp() *App {
 // startup is called by Wails when the application starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// Clean up any leftover temp junctions from previous failed migrations
+	go migrate.CleanupTempJunctions()
 }
 
 // shutdown is called by Wails when the application shuts down.
@@ -97,7 +99,7 @@ func (a *App) GetFolders() []FolderInfo {
 		fi.TargetPath = expanded
 
 		// Calculate folder size (lazy — may take a moment for large folders).
-				if size, err := a.cachedDirSize(expanded); err == nil {
+		if size, err := a.cachedDirSize(expanded); err == nil {
 			fi.SizeBytes = size
 		} else {
 			fi.SizeBytes = -1 // sentinel: directory size could not be calculated
@@ -142,14 +144,14 @@ func (a *App) GetDisks() []DiskInfo {
 			continue
 		}
 		result = append(result, DiskInfo{
-			Drive:       drive + ":",
-			Label:       volInfo.FileSystem, // Label comes from volume name; FileSystem as proxy
-			TotalBytes:  totalBytes,
-			FreeBytes:   freeBytes,
-			IsFixedDrive:       volInfo.IsFixedDrive,
-			IsRemovable: volInfo.IsRemovable,
-			IsNetwork:   volInfo.IsNetwork,
-			FileSystem:  volInfo.FileSystem,
+			Drive:        drive + ":",
+			Label:        volInfo.FileSystem, // Label comes from volume name; FileSystem as proxy
+			TotalBytes:   totalBytes,
+			FreeBytes:    freeBytes,
+			IsFixedDrive: volInfo.IsFixedDrive,
+			IsRemovable:  volInfo.IsRemovable,
+			IsNetwork:    volInfo.IsNetwork,
+			FileSystem:   volInfo.FileSystem,
 		})
 	}
 	return result
@@ -171,11 +173,11 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 		}
 		expanded := os.ExpandEnv(rawPath)
 		size, err := a.cachedDirSize(expanded)
-				if err != nil {
-					// intentional: skip folders we cannot measure; estimate will be conservative
-					continue
-				}
-				totalBytes += size
+		if err != nil {
+			// intentional: skip folders we cannot measure; estimate will be conservative
+			continue
+		}
+		totalBytes += size
 	}
 
 	// Determine if cross-volume by checking the first folder's source drive.
@@ -218,13 +220,12 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 
 	estimatedText := formatDuration(estimatedSec)
 	return DurationEstimate{
-		IsCrossVolume: isCrossVolume,
-		TargetIsFixedDrive:   targetIsFixedDrive,
-		EstimatedSec:  estimatedSec,
-		EstimatedText: estimatedText,
+		IsCrossVolume:      isCrossVolume,
+		TargetIsFixedDrive: targetIsFixedDrive,
+		EstimatedSec:       estimatedSec,
+		EstimatedText:      estimatedText,
 	}
 }
-
 
 func formatDuration(sec int) string {
 	if sec < 60 {
@@ -319,8 +320,8 @@ func (a *App) StartMigration(targetDrive string) {
 				if totalBytes > 0 {
 					percent = int(bytesMoved * 100 / totalBytes)
 				}
-				// Scale percent to overall progress.
-				overallPercent := ((folderIdx * 100) + percent) / total
+				// Scale percent to overall progress (use float for smoother progress).
+				overallPercent := int((float64(folderIdx*100) + float64(percent)) / float64(total))
 				runtime.EventsEmit(a.ctx, "migration:progress", ProgressInfo{
 					Folder:     folderName,
 					Phase:      phase,
@@ -356,9 +357,9 @@ func (a *App) StartMigration(targetDrive string) {
 		}
 
 		a.clearSizeCache()
-				runtime.EventsEmit(a.ctx, "migration:done", map[string]interface{}{
-					"success": true,
-				})
+		runtime.EventsEmit(a.ctx, "migration:done", map[string]interface{}{
+			"success": true,
+		})
 	}()
 }
 
@@ -373,7 +374,13 @@ func (a *App) CancelMigration() {
 
 // Rollback reverses the migration for a specific folder.
 func (a *App) Rollback(regValueName string) error {
-	return migrate.Rollback(regValueName)
+	return migrate.Rollback(regValueName, func(phase string, filesMoved, totalFiles int) {
+		runtime.EventsEmit(a.ctx, "rollback:progress", map[string]interface{}{
+			"phase":      phase,
+			"filesMoved": filesMoved,
+			"totalFiles": totalFiles,
+		})
+	})
 }
 
 // ---------------------------------------------------------------------------

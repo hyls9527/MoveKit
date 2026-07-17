@@ -18,7 +18,7 @@ func CheckJunctionHijack(targetPath string) *MoveKitError {
 		}
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
-			Message: "Cannot evaluate target path",
+			Message: "无法评估目标路径",
 			Detail:  err.Error(),
 			Action:  "Verify the target path is accessible",
 		}
@@ -28,7 +28,7 @@ func CheckJunctionHijack(targetPath string) *MoveKitError {
 	if resolved != targetPath {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
-			Message: "Target path is a junction or symlink",
+			Message: "目标路径是 Junction 或符号链接",
 			Detail:  targetPath + " resolves to " + resolved,
 			Action:  "Choose a different target path that is not a junction",
 		}
@@ -38,7 +38,7 @@ func CheckJunctionHijack(targetPath string) *MoveKitError {
 	if Sys.Junction.IsJunction(targetPath) {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
-			Message: "Target path is an NTFS junction point",
+			Message: "目标路径是 NTFS Junction 点",
 			Detail:  targetPath,
 			Action:  "Remove the existing junction or choose a different target",
 		}

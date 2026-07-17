@@ -29,7 +29,7 @@ func TestIsCrossVolume(t *testing.T) {
 	}{
 		{`C:\src`, `C:\dst`, false},
 		{`C:\src`, `D:\dst`, true},
-		{`C:\src`, `c:\dst`, false},  // case-insensitive
+		{`C:\src`, `c:\dst`, false}, // case-insensitive
 		{`D:\src`, `E:\dst`, true},
 		{`relative`, `C:\dst`, false}, // no volume name
 	}
