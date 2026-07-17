@@ -23,6 +23,25 @@ type App struct {
 	ctx       context.Context
 	mu        sync.Mutex
 	migrating bool
+	sizeCache sync.Map // path -> int64, caches dirSize results
+}
+
+// cachedDirSize returns directory size with caching to avoid repeated walks.
+func (a *App) cachedDirSize(path string) (int64, error) {
+	if cached, ok := a.sizeCache.Load(path); ok {
+		return cached.(int64), nil
+	}
+	size, err := migrate.DirSize(path)
+	if err != nil {
+		return 0, err
+	}
+	a.sizeCache.Store(path, size)
+	return size, nil
+}
+
+// clearSizeCache clears the size cache (call after migration completes).
+func (a *App) clearSizeCache() {
+	a.sizeCache = sync.Map{}
 }
 
 // NewApp creates a new App instance.
@@ -78,7 +97,7 @@ func (a *App) GetFolders() []FolderInfo {
 		fi.TargetPath = expanded
 
 		// Calculate folder size (lazy — may take a moment for large folders).
-		if size, err := dirSize(expanded); err == nil {
+				if size, err := a.cachedDirSize(expanded); err == nil {
 			fi.SizeBytes = size
 		} else {
 			fi.SizeBytes = -1 // sentinel: directory size could not be calculated
@@ -151,12 +170,12 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 			continue
 		}
 		expanded := os.ExpandEnv(rawPath)
-		size, err := dirSize(expanded)
-		if err != nil {
-			// intentional: skip folders we cannot measure; estimate will be conservative
-			continue
-		}
-		totalBytes += size
+		size, err := a.cachedDirSize(expanded)
+				if err != nil {
+					// intentional: skip folders we cannot measure; estimate will be conservative
+					continue
+				}
+				totalBytes += size
 	}
 
 	// Determine if cross-volume by checking the first folder's source drive.
@@ -206,22 +225,7 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 	}
 }
 
-// dirSize returns the total size in bytes of all files under dir.
-func dirSize(dir string) (int64, error) {
-	var size int64
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return nil
-	})
-	return size, err
-}
 
-// formatDuration formats seconds into a human-readable string.
 func formatDuration(sec int) string {
 	if sec < 60 {
 		return fmt.Sprintf("%d秒", sec)
@@ -351,9 +355,10 @@ func (a *App) StartMigration(targetDrive string) {
 			}
 		}
 
-		runtime.EventsEmit(a.ctx, "migration:done", map[string]interface{}{
-			"success": true,
-		})
+		a.clearSizeCache()
+				runtime.EventsEmit(a.ctx, "migration:done", map[string]interface{}{
+					"success": true,
+				})
 	}()
 }
 

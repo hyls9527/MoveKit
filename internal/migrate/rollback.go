@@ -1,6 +1,8 @@
 package migrate
 
 import (
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -40,25 +42,34 @@ func Rollback(folderName string) error {
 	}
 
 	// 3. Move files back from new location to original.
-	// Ensure the parent of the original path exists.
-	parentDir := filepath.Dir(rec.OriginalPath)
-	if err := os.MkdirAll(parentDir, 0755); err != nil {
-		return &MoveKitError{
-			Code:    ErrCodePermissionDenied,
-			Message: "Cannot create parent directory for rollback",
-			Detail:  err.Error(),
-			Action:  "Check write permissions on the original drive",
+		// Ensure the parent of the original path exists.
+		parentDir := filepath.Dir(rec.OriginalPath)
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return &MoveKitError{
+				Code:    ErrCodePermissionDenied,
+				Message: "无法创建回滚目标目录",
+				Detail:  err.Error(),
+				Action:  "检查原盘的写入权限",
+			}
 		}
-	}
 
-	if err := os.Rename(rec.NewPath, rec.OriginalPath); err != nil {
-		return &MoveKitError{
-			Code:    ErrCodeFileLocked,
-			Message: "Failed to move files back during rollback",
-			Detail:  err.Error(),
-			Action:  "Close any programs using files in the target folder and retry",
+		// Detect cross-volume: if source and target are on different drives, use copy+delete
+		if Sys.Volume.IsCrossVolume(rec.NewPath, rec.OriginalPath) {
+			// Cross-volume rollback: copy each file then delete source
+			if err := rollbackCrossVolume(rec.NewPath, rec.OriginalPath); err != nil {
+				return err
+			}
+		} else {
+			// Same-volume: atomic rename
+			if err := os.Rename(rec.NewPath, rec.OriginalPath); err != nil {
+				return &MoveKitError{
+					Code:    ErrCodeFileLocked,
+					Message: "回滚移动文件失败",
+					Detail:  err.Error(),
+					Action:  "关闭正在使用目标文件夹的程序后重试",
+				}
+			}
 		}
-	}
 
 	// 4. Restore registry values.
 	// Write the original path back to User Shell Folders.
@@ -83,11 +94,56 @@ func Rollback(folderName string) error {
 	}
 
 	// 5. Update backup status.
-	rec.Status = "rolled_back"
-	if err := SaveBackup(*rec); err != nil {
-		// Non-fatal: the rollback succeeded even if we can't update the record.
+		rec.Status = "rolled_back"
+		if err := SaveBackup(*rec); err != nil {
+			// Non-fatal: the rollback succeeded even if we can't update the record.
+			return nil
+		}
+
 		return nil
 	}
 
-	return nil
-}
+	// rollbackCrossVolume moves files back across volumes using copy+delete.
+	func rollbackCrossVolume(src, dst string) error {
+		// Walk source, copy each file to destination, then delete source
+		err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			relPath, err := filepath.Rel(src, path)
+			if err != nil {
+				return err
+			}
+			dstPath := filepath.Join(dst, relPath)
+
+			if d.IsDir() {
+				return os.MkdirAll(dstPath, 0755)
+			}
+
+			// Copy file
+			if err := Sys.File.CopyFileWithACL(path, dstPath, nil); err != nil {
+				return fmt.Errorf("copy %s: %w", relPath, err)
+			}
+
+			// Remove source
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("remove source %s: %w", relPath, err)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return &MoveKitError{
+				Code:    ErrCodeFileLocked,
+				Message: "跨卷回滚失败",
+				Detail:  err.Error(),
+				Action:  "关闭正在使用文件夹的程序后重试",
+			}
+		}
+
+		// Clean up empty source directory
+		os.RemoveAll(src)
+		return nil
+	}
