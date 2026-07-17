@@ -14,6 +14,24 @@ import (
 // ProgressCallback is called during migration to report progress.
 type ProgressCallback func(folder, phase string, filesMoved, totalFiles int, bytesMoved, totalBytes int64)
 
+// CleanupTempJunctions removes any leftover .movekit_tmp junctions from previous failed migrations.
+// Call this on application startup.
+func CleanupTempJunctions() {
+	for _, f := range []string{"Desktop", "Personal", "My Pictures", "My Music", "{374DE290-123F-4565-9164-39C4925E467B}"} {
+		rawPath, err := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, f)
+		if err != nil {
+			continue
+		}
+		sourcePath := os.ExpandEnv(rawPath)
+		tempPath := sourcePath + ".movekit_tmp"
+		if _, err := os.Stat(tempPath); err == nil {
+			// Temp junction exists, try to remove it
+			Sys.Junction.DeleteJunction(tempPath)
+			os.Remove(tempPath)
+		}
+	}
+}
+
 // Migrate moves a known folder to a new drive and creates a junction at the original location.
 //
 // Parameters:
@@ -44,7 +62,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
-			Message: "Cannot read current folder path from registry",
+			Message: "无法从注册表读取当前文件夹路径",
 			Detail:  err.Error(),
 			Action:  "Verify the folder is a known Windows folder",
 		}
@@ -62,7 +80,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 		if err != nil {
 			return &MoveKitError{
 				Code:    ErrCodeJunctionFailed,
-				Message: "Cannot resolve existing junction target",
+				Message: "无法解析现有 Junction 目标",
 				Detail:  err.Error(),
 				Action:  "Check that the junction is not broken",
 			}
@@ -72,18 +90,18 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Validate drive letter.
-		driveLetter := targetDrive
-		if len(driveLetter) >= 2 && driveLetter[1] == ':' {
-			driveLetter = driveLetter[:1]
+	driveLetter := targetDrive
+	if len(driveLetter) >= 2 && driveLetter[1] == ':' {
+		driveLetter = driveLetter[:1]
+	}
+	if len(driveLetter) != 1 || driveLetter[0] < 'A' || driveLetter[0] > 'Z' {
+		return &MoveKitError{
+			Code:    ErrCodePermissionDenied,
+			Message: "无效的目标盘符",
+			Detail:  fmt.Sprintf("收到: %q", targetDrive),
+			Action:  "请选择 A-Z 之间的盘符",
 		}
-		if len(driveLetter) != 1 || driveLetter[0] < 'A' || driveLetter[0] > 'Z' {
-			return &MoveKitError{
-				Code:    ErrCodePermissionDenied,
-				Message: "无效的目标盘符",
-				Detail:  fmt.Sprintf("收到: %q", targetDrive),
-				Action:  "请选择 A-Z 之间的盘符",
-			}
-		}
+	}
 	folderName := filepath.Base(actualSource)
 	targetPath := filepath.Join(driveLetter+":\\", folderName)
 	log.Info("Target path: %s", maskPath(targetPath))
@@ -105,6 +123,8 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// Check for file conflicts before moving.
+	// Skip if source is already a junction (re-migration): files are already at target.
+	if !Sys.Junction.IsJunction(sourcePath) {
 		conflicts, err := DetectConflicts(actualSource, targetPath)
 		if err != nil {
 			log.Warn("Conflict detection failed: %v", err)
@@ -118,6 +138,9 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 				Action:  "请先手动删除目标路径中的同名文件，或选择其他盘符",
 			}
 		}
+	} else {
+		log.Info("Source is junction (re-migration), skipping conflict detection")
+	}
 
 	// 4. Save backup record (status=in_progress).
 	backupPath := backupFilePath(regValueName)
@@ -334,7 +357,6 @@ func saveBackup(path string, record BackupRecord) error {
 	}
 	return os.WriteFile(path, data, 0644)
 }
-
 
 // resolveJunctionTarget reads the reparse point to find where a junction points to.
 // Falls back to checking if the directory is accessible (non-junction case).

@@ -15,7 +15,7 @@ const (
 	FILE_FLAG_SEQUENTIAL_SCAN = 0x08000000
 
 	// Security information constants for Get/SetNamedSecurityInfoW.
-	SE_FILE_OBJECT           = 1
+	SE_FILE_OBJECT            = 1
 	DACL_SECURITY_INFORMATION = 4
 )
 
@@ -29,11 +29,11 @@ type ACL struct {
 }
 
 var (
-	procCopyFileExW  = modkernel32.NewProc("CopyFileExW")
-	procMoveFileExW  = modkernel32.NewProc("MoveFileExW")
-	procLocalFree    = modkernel32.NewProc("LocalFree")
+	procCopyFileExW = modkernel32.NewProc("CopyFileExW")
+	procMoveFileExW = modkernel32.NewProc("MoveFileExW")
+	procLocalFree   = modkernel32.NewProc("LocalFree")
 
-	modadvapi32              = syscall.NewLazyDLL("advapi32.dll")
+	modadvapi32               = syscall.NewLazyDLL("advapi32.dll")
 	procGetNamedSecurityInfoW = modadvapi32.NewProc("GetNamedSecurityInfoW")
 	procSetNamedSecurityInfoW = modadvapi32.NewProc("SetNamedSecurityInfoW")
 )

@@ -223,9 +223,9 @@ func TestDebugRawJunction(t *testing.T) {
 	le.PutUint16(rawBuf[4:], uint16(dataLen))
 	le.PutUint16(rawBuf[6:], 0)
 	le.PutUint16(rawBuf[8:], 0)                 // SubstituteNameOffset
-	le.PutUint16(rawBuf[10:], uint16(subLen))    // SubstituteNameLength
-	le.PutUint16(rawBuf[12:], uint16(subLen))    // PrintNameOffset
-	le.PutUint16(rawBuf[14:], uint16(printLen))  // PrintNameLength
+	le.PutUint16(rawBuf[10:], uint16(subLen))   // SubstituteNameLength
+	le.PutUint16(rawBuf[12:], uint16(subLen))   // PrintNameOffset
+	le.PutUint16(rawBuf[14:], uint16(printLen)) // PrintNameLength
 	copy(rawBuf[16:], subNameBytes)
 	copy(rawBuf[16+subLen:], printNameBytes)
 
