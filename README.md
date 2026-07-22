@@ -1,37 +1,56 @@
-# MoveKit - C盘瘦身工具
+# MoveKit — C盘瘦身工具
 
 [![CI](https://github.com/hyls9527/MoveKit/actions/workflows/ci.yml/badge.svg)](https://github.com/hyls9527/MoveKit/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/hyls9527/MoveKit)](https://github.com/hyls9527/MoveKit/releases/latest)
 
-一键迁移用户文件夹（桌面/下载/文档/图片/音乐）到其他盘，安全可靠。
+**一键迁移桌面/下载/文档/图片/音乐到其他盘，释放 C 盘空间。所有程序无需任何改动，照常运行。**
 
-## ✨ 功能
+---
 
-- **一键批量迁移** — 桌面、下载、文档、图片、音乐，5 个文件夹一键搬家
-- **100% 兼容** — 自动创建 NTFS Junction，所有程序照常使用
-- **安全可靠** — 迁移前自动备份，一键回滚到原始位置
-- **实时进度** — 显示文件数、字节数、百分比三重进度
-- **智能检测** — OneDrive 冲突、文件占用、磁盘空间、杀软拦截
-- **便携版** — 单个 exe，双击即用，无需安装
+## 为什么需要 MoveKit
 
-## 📦 下载
+C 盘空间不足时，Windows 变慢、更新失败、软件报错。手动迁移用户文件夹繁琐且危险——改错注册表或路径会导致程序找不到文件。
 
-从 [Releases](../../releases) 页面下载最新版 `MoveKit.exe`。
+MoveKit 把这件事变成一次点击：选盘→确认→完成。迁移后回到 C 盘，一切都和原来一样。
 
-## 🚀 使用
+## 快速开始
 
-1. 双击 `MoveKit.exe` 运行
-2. 选择目标磁盘（推荐 SSD）
-3. 点击"开始迁移"
-4. 等待完成
+1. **下载** — 从 [Releases](https://github.com/hyls9527/MoveKit/releases) 获取最新 `MoveKit.exe`
+2. **运行** — 双击启动（无需安装）
+3. **选盘** — 选择一个 NTFS 磁盘作为目标
+4. **迁移** — 点击「开始迁移」，等待完成
 
-## ⚠️ 注意事项
+> 首次运行可能触发 SmartScreen，这是未签名便携 exe 的正常提示。点击「更多信息」→「仍要运行」即可。
 
-- 首次运行可能触发 Windows Defender / SmartScreen 警告，这是误报。点击"更多信息" → "仍要运行"
-- 如果正在使用 OneDrive 同步，请先关闭文件夹同步再迁移
-- 迁移过程中请勿关闭程序
-- 迁移完成后可随时回滚
+## 功能亮点
 
-## 🔧 开发
+| | |
+|---|---|
+| **一键搬家** | 桌面、下载、文档、图片、音乐，5 个文件夹同时迁移 |
+| **程序零感知** | 自动创建 NTFS Junction，所有快捷方式和软件路径不受影响 |
+| **随时回滚** | 迁移前自动备份，一键恢复到原始位置 |
+| **智能安检** | 检测 OneDrive 冲突、磁盘空间、文件占用、杀软拦截，迁移前预警 |
+
+## 安全机制
+
+- **备份优先** — 迁移前写入备份记录，所有操作可追溯
+- **原子回滚** — 迁移失败时自动把文件移回原处，不留孤儿文件
+- **双键注册表** — User Shell Folders + Shell Folders 同时更新，任一失败自动回滚
+- **冲突可跳过** — 迁移过程中支持跳过或覆盖同名文件
+- **进程防重** — 单实例互斥锁，防止同时运行多个迁移
+
+## 适用场景
+
+- C 盘空间不足，用户文件夹占用过大
+- 新电脑或重装系统后，希望把数据放到其他盘
+- 从 HDD 迁移到 SSD，提升系统响应速度
+
+## 技术栈
+
+`Go 1.23.5` · `Wails v2` · `React 19` · `TypeScript` · `Tailwind CSS v4` · `Win32 API` · `Windows 10/11`
+
+## 开发
 
 ### 环境要求
 
@@ -59,23 +78,6 @@ cd .. && go build -o MoveKit.exe .
 go test ./... -v
 ```
 
-## 📁 项目结构
-
-```
-MoveKit/
-├── main.go                    # Wails 入口
-├── app.go                     # 16 个 Wails 绑定方法
-├── app_types.go               # 类型定义
-├── internal/
-│   ├── syscall/               # Win32 API 封装 (junction/registry/volume/fileops/process/power/shell)
-│   ├── migrate/               # 迁移核心逻辑 (migrate/check/onedrive/backup/rollback/move/conflict/state/verify/security/cloud/version/errors/log)
-│   └── folders/               # Known Folder GUID 定义
-└── frontend/                  # React + TypeScript + TailwindCSS v4
-    └── src/
-        ├── App.tsx            # 状态机 + 所有对话框集成
-        └── components/        # 12 个 UI 组件
-```
-
-## 📄 协议
+## 协议
 
 MIT License
