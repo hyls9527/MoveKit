@@ -4,17 +4,19 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/movekit/movekit/internal/migrate"
 )
 
 func TestDirSize_NonexistentPath(t *testing.T) {
-	_, err := dirSize(`C:\ThisPathDoesNotExist_12345`)
+	_, err := migrate.DirSize(`C:\ThisPathDoesNotExist_12345`)
 	if err == nil {
 		t.Error("dirSize(nonexistent) should return error, got nil")
 	}
 }
 
 func TestDirSize_ValidPath(t *testing.T) {
-	size, err := dirSize(t.TempDir())
+	size, err := migrate.DirSize(t.TempDir())
 	if err != nil {
 		t.Fatalf("dirSize(TempDir) unexpected error: %v", err)
 	}
@@ -24,7 +26,7 @@ func TestDirSize_ValidPath(t *testing.T) {
 }
 
 func TestGetFolders_DirSizeError(t *testing.T) {
-	_, err := dirSize(`X:\Missing\Path`)
+	_, err := migrate.DirSize(`X:\Missing\Path`)
 	if err == nil {
 		t.Skip("unexpected: path existed (can't test error path)")
 	}

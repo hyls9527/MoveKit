@@ -23,6 +23,25 @@ type App struct {
 	ctx       context.Context
 	mu        sync.Mutex
 	migrating bool
+	sizeCache sync.Map // path -> int64, caches dirSize results
+}
+
+// cachedDirSize returns directory size with caching to avoid repeated walks.
+func (a *App) cachedDirSize(path string) (int64, error) {
+	if cached, ok := a.sizeCache.Load(path); ok {
+		return cached.(int64), nil
+	}
+	size, err := migrate.DirSize(path)
+	if err != nil {
+		return 0, err
+	}
+	a.sizeCache.Store(path, size)
+	return size, nil
+}
+
+// clearSizeCache clears the size cache (call after migration completes).
+func (a *App) clearSizeCache() {
+	a.sizeCache = sync.Map{}
 }
 
 // NewApp creates a new App instance.
@@ -33,6 +52,8 @@ func NewApp() *App {
 // startup is called by Wails when the application starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// Clean up any leftover temp junctions from previous failed migrations
+	go migrate.CleanupTempJunctions()
 }
 
 // shutdown is called by Wails when the application shuts down.
@@ -78,7 +99,7 @@ func (a *App) GetFolders() []FolderInfo {
 		fi.TargetPath = expanded
 
 		// Calculate folder size (lazy — may take a moment for large folders).
-		if size, err := dirSize(expanded); err == nil {
+		if size, err := a.cachedDirSize(expanded); err == nil {
 			fi.SizeBytes = size
 		} else {
 			fi.SizeBytes = -1 // sentinel: directory size could not be calculated
@@ -151,7 +172,7 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 			continue
 		}
 		expanded := os.ExpandEnv(rawPath)
-		size, err := dirSize(expanded)
+		size, err := a.cachedDirSize(expanded)
 		if err != nil {
 			// intentional: skip folders we cannot measure; estimate will be conservative
 			continue
@@ -206,22 +227,6 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 	}
 }
 
-// dirSize returns the total size in bytes of all files under dir.
-func dirSize(dir string) (int64, error) {
-	var size int64
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return nil
-	})
-	return size, err
-}
-
-// formatDuration formats seconds into a human-readable string.
 func formatDuration(sec int) string {
 	if sec < 60 {
 		return fmt.Sprintf("%d秒", sec)
@@ -319,9 +324,9 @@ func (a *App) StartMigration(targetDrive string, conflictMode string) {
 			onProgress := func(folder, phase string, filesMoved, totalFiles int, bytesMoved, totalBytes int64) {
 				percent := 0
 				if totalBytes > 0 {
-					percent = int(float64(bytesMoved) * 100 / float64(totalBytes))
+					percent = int(bytesMoved * 100 / totalBytes)
 				}
-				// Scale percent to overall progress (float64 to avoid truncation).
+				// Scale percent to overall progress (use float for smoother progress).
 				overallPercent := int((float64(folderIdx*100) + float64(percent)) / float64(total))
 				runtime.EventsEmit(a.ctx, "migration:progress", ProgressInfo{
 					Folder:     folderName,
@@ -357,6 +362,7 @@ func (a *App) StartMigration(targetDrive string, conflictMode string) {
 			}
 		}
 
+		a.clearSizeCache()
 		runtime.EventsEmit(a.ctx, "migration:done", map[string]interface{}{
 			"success": true,
 		})
@@ -374,7 +380,13 @@ func (a *App) CancelMigration() {
 
 // Rollback reverses the migration for a specific folder.
 func (a *App) Rollback(regValueName string) error {
-	return migrate.Rollback(regValueName)
+	return migrate.Rollback(regValueName, func(phase string, filesMoved, totalFiles int) {
+		runtime.EventsEmit(a.ctx, "rollback:progress", map[string]interface{}{
+			"phase":      phase,
+			"filesMoved": filesMoved,
+			"totalFiles": totalFiles,
+		})
+	})
 }
 
 // ---------------------------------------------------------------------------

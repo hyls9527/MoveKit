@@ -7,8 +7,8 @@ import (
 	"unicode"
 )
 
-// dirSize returns the total size in bytes of all files under dir.
-func dirSize(dir string) (int64, error) {
+// DirSize returns the total size in bytes of all files under dir.
+func DirSize(dir string) (int64, error) {
 	var size int64
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -56,7 +56,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
-			Message: "Source path does not exist or is not accessible",
+			Message: "源路径不存在或无法访问",
 			Detail:  err.Error(),
 			Action:  "Verify the source folder exists and you have read access",
 		}
@@ -64,7 +64,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if !fi.IsDir() {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
-			Message: "Source path is not a directory",
+			Message: "源路径不是目录",
 			Detail:  sourcePath,
 			Action:  "Select a valid directory as the source",
 		}
@@ -89,7 +89,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeFileSystemNotNTFS,
-			Message: "Cannot read volume information for target drive",
+			Message: "无法读取目标盘的卷信息",
 			Detail:  err.Error(),
 			Action:  "Verify the target drive is connected and accessible",
 		}
@@ -97,7 +97,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if volInfo.FileSystem != "NTFS" {
 		return &MoveKitError{
 			Code:    ErrCodeFileSystemNotNTFS,
-			Message: "Target drive is not NTFS (required for junction points)",
+			Message: "目标盘不是 NTFS 文件系统（Junction 依赖 NTFS）",
 			Detail:  "Filesystem: " + volInfo.FileSystem,
 			Action:  "MoveKit requires an NTFS volume. Reformat or choose a different drive.",
 		}
@@ -107,7 +107,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if volInfo.IsRemovable {
 		return &MoveKitError{
 			Code:    ErrCodeRemovableDrive,
-			Message: "Target drive is removable",
+			Message: "目标盘是可移动驱动器",
 			Detail:  "Removable drives are not supported for migration",
 			Action:  "Use an internal fixed drive as the target",
 		}
@@ -115,18 +115,18 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if volInfo.IsNetwork {
 		return &MoveKitError{
 			Code:    ErrCodeNetworkDrive,
-			Message: "Target drive is a network drive",
+			Message: "目标盘是网络驱动器",
 			Detail:  "Network drives are not supported for migration",
 			Action:  "Use a local drive as the target",
 		}
 	}
 
 	// 4. Space must be sufficient.
-	srcSize, err := dirSize(sourcePath)
+	srcSize, err := DirSize(sourcePath)
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
-			Message: "Cannot calculate source directory size",
+			Message: "无法计算源目录大小",
 			Detail:  err.Error(),
 			Action:  "Verify you have read access to all files in the source",
 		}
@@ -136,7 +136,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if err != nil {
 		return &MoveKitError{
 			Code:    ErrCodeSpaceInsufficient,
-			Message: "Cannot read free space on target drive",
+			Message: "无法读取目标盘剩余空间",
 			Detail:  err.Error(),
 			Action:  "Verify the target drive is accessible",
 		}
@@ -144,7 +144,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if freeBytes < srcSize {
 		return &MoveKitError{
 			Code:    ErrCodeSpaceInsufficient,
-			Message: "Insufficient space on target drive",
+			Message: "目标盘空间不足",
 			Detail:  "Need " + formatBytes(srcSize) + " but only " + formatBytes(freeBytes) + " free",
 			Action:  "Free up space on the target drive or choose a larger one",
 		}
@@ -155,7 +155,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if _, err := os.Stat(targetPath); err == nil {
 		return &MoveKitError{
 			Code:    ErrCodeTargetExists,
-			Message: "Target path already exists",
+			Message: "目标路径已存在",
 			Detail:  targetPath,
 			Action:  "Remove or rename the existing folder at the target location",
 		}

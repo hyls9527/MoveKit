@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, DiskInfo, FolderInfo, ProgressInfo } from './types';
-import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, GetVersion, CancelMigration, DetectConflicts, onMigrationProgress, onMigrationDone } from './lib/wails';
+import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, GetVersion, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
 import DiskSelector from './components/DiskSelector';
+import { ErrorBoundary as SectionErrorBoundary } from './components/ErrorBoundary';
 import FolderList from './components/FolderList';
 import ProgressBar from './components/ProgressBar';
 import ResultPage from './components/ResultPage';
@@ -44,7 +45,6 @@ function AppInner() {
   const [updateInfo, setUpdateInfo] = useState({ currentVersion: '', newVersion: '', downloadUrl: '' });
   const [showFirstRunGuide, setShowFirstRunGuide] = useState(false);
   const [showHelpPanel, setShowHelpPanel] = useState(false);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Check first-run on mount
   useEffect(() => {
@@ -112,52 +112,26 @@ function AppInner() {
   };
 
   const handleConfirm = async () => {
-    // Check for file conflicts before migrating.
-    try {
-      const allConflicts: ConflictFile[] = [];
-      for (const f of folders) {
-        if (f.status === 'migrated' || f.status === 'not_on_c') continue;
-        const target = `${selectedDisk}\\${f.name}`;
-        const result = await DetectConflicts(f.sourcePath, target);
-        if (result && result.length > 0) {
-          for (const c of result) {
-            allConflicts.push({
-              filename: c.relativePath || c.RelativePath || '',
-              sourceSize: c.srcSize || c.SrcSize || 0,
-              sourceDate: c.srcModTime || c.SrcModTime || '',
-              targetSize: c.dstSize || c.DstSize || 0,
-              targetDate: c.dstModTime || c.DstModTime || '',
-            });
-          }
-        }
-      }
-      if (allConflicts.length > 0) {
-        setConflicts(allConflicts);
-        setShowConflictDialog(true);
-        return;
-      }
-    } catch {
-      // If conflict detection fails, proceed anyway
-    }
-
     setState('migrating');
     try {
       await StartMigration(selectedDisk);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '未知错误';
-      setError(msg.includes('syscall') || msg.includes('access denied')
-        ? '迁移失败：权限不足，请以管理员身份运行 MoveKit 后重试。'
-        : `迁移失败：${msg}`);
+      setError(`迁移失败：${err instanceof Error ? err.message : '未知错误'}`);
       setState('failed');
     }
   };
 
-  const handleCancel = () => {
-    setShowCancelConfirm(true);
-  };
+  const handleCancel = async () => {
+    const confirmed = window.confirm(
+      '确定要取消迁移吗？
 
-  const handleCancelConfirm = async () => {
-    setShowCancelConfirm(false);
+' +
+      '跨卷迁移中途取消可能导致部分文件已复制、部分未复制的不一致状态。
+' +
+      '建议等待迁移完成后再回滚。'
+    );
+    if (!confirmed) return;
+
     try {
       await CancelMigration();
     } catch {
@@ -205,10 +179,7 @@ function AppInner() {
         ),
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '未知错误';
-      setError(msg.includes('syscall') || msg.includes('access denied')
-        ? '回滚失败：权限不足，请以管理员身份运行 MoveKit 后重试。'
-        : `回滚失败：${msg}`);
+      setError(`回滚失败：${err instanceof Error ? err.message : '未知错误'}`);
     }
   };
 
@@ -278,9 +249,11 @@ function AppInner() {
           <>
             <FolderList folders={folders} />
 
+            <SectionErrorBoundary>
             <div className="p-4 rounded-fluent bg-card border border-border">
               <DiskSelector disks={disks} selected={selectedDisk} onSelect={setSelectedDisk} />
             </div>
+            </SectionErrorBoundary>
 
             {totalSize > 0 && selectedDisk && (
               <div className="p-4 rounded-fluent bg-accent/5 border border-accent/10">
@@ -365,7 +338,7 @@ function AppInner() {
           conflicts={conflicts}
           onSkip={() => {
             setShowConflictDialog(false);
-            // Proceed with migration — conflicts will be skipped.
+            // Continue migration, skipping conflicts
             setState('migrating');
             StartMigration(selectedDisk, 'skip').catch((err) => {
               const msg = err instanceof Error ? err.message : '未知错误';
@@ -375,7 +348,7 @@ function AppInner() {
           }}
           onOverwrite={() => {
             setShowConflictDialog(false);
-            // Proceed with migration — conflicts will be overwritten.
+            // Continue migration, overwriting conflicts
             setState('migrating');
             StartMigration(selectedDisk, 'overwrite').catch((err) => {
               const msg = err instanceof Error ? err.message : '未知错误';
@@ -423,36 +396,6 @@ function AppInner() {
         open={showHelpPanel}
         onClose={() => setShowHelpPanel(false)}
       />
-
-      {showCancelConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-card rounded-fluent shadow-fluent-lg border border-border max-w-md w-full mx-4 overflow-hidden">
-            <div className="px-6 pt-6 pb-2">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">⚠️</span>
-                <h2 className="text-lg font-semibold text-text-primary">确认取消迁移？</h2>
-              </div>
-              <p className="text-sm text-text-secondary mt-2">
-                取消迁移可能导致部分文件已复制但未完成。已复制的文件不会自动清理。
-              </p>
-            </div>
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
-              <button
-                onClick={() => setShowCancelConfirm(false)}
-                className="px-4 py-2 text-sm text-text-secondary rounded-fluent border border-border hover:bg-surface-alt transition-colors"
-              >
-                继续迁移
-              </button>
-              <button
-                onClick={handleCancelConfirm}
-                className="px-4 py-2 text-sm font-medium text-white rounded-fluent bg-danger hover:bg-danger/90 transition-colors"
-              >
-                确认取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
