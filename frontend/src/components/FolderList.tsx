@@ -10,7 +10,7 @@ function formatBytes(bytes: number): string {
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   default: { label: '待迁移', color: 'text-text-secondary', bg: 'bg-surface-alt' },
   migrated: { label: '已迁移', color: 'text-success', bg: 'bg-success/10' },
-  not_on_c: { label: '无需迁移', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  not_on_c: { label: '无需迁移', color: 'text-accent', bg: 'bg-accent/10' },
   unknown: { label: '未知', color: 'text-text-secondary', bg: 'bg-surface-alt' },
   junction_broken: { label: '链接异常', color: 'text-danger', bg: 'bg-danger/10' },
 };
@@ -34,7 +34,10 @@ export default function FolderList({ folders }: FolderListProps) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-text-primary">{folder.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}
+                    aria-label={`状态: ${status.label}`}
+                  >
                     {status.label}
                   </span>
                 </div>

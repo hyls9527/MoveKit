@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	procCreateMutexW  = modkernel32.NewProc("CreateMutexW")  // CreateMutexW is in kernel32
+	procCreateMutexW             = modkernel32.NewProc("CreateMutexW") // CreateMutexW is in kernel32
 	procCreateToolhelp32Snapshot = modkernel32.NewProc("CreateToolhelp32Snapshot")
 	procProcess32FirstW          = modkernel32.NewProc("Process32FirstW")
 	procProcess32NextW           = modkernel32.NewProc("Process32NextW")

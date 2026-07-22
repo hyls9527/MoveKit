@@ -1,0 +1,7 @@
+{
+  "files": ["frontend/index.html"],
+  "insertBefore": "</head>",
+  "commentSyntax": "html",
+  "framework": "vite",
+  "cspChecked": true
+}

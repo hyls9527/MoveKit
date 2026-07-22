@@ -45,9 +45,9 @@ export async function CheckOneDriveKFM(): Promise<{ isActive: boolean; folders: 
   return { isActive: false, folders: [], hasGPOBlock: false };
 }
 
-export async function StartMigration(targetDrive: string): Promise<void> {
-  if (realBindings) return realBindings.StartMigration(targetDrive);
-  console.log('Mock: StartMigration to', targetDrive);
+export async function StartMigration(targetDrive: string, conflictMode: string = 'skip'): Promise<void> {
+  if (realBindings) return realBindings.StartMigration(targetDrive, conflictMode);
+  console.log('Mock: StartMigration to', targetDrive, 'mode:', conflictMode);
 }
 
 export async function CancelMigration(): Promise<void> {
@@ -95,6 +95,11 @@ export async function DetectCloudSync(): Promise<any[]> {
 export async function CheckUpdate(): Promise<any> {
   if (realBindings) return realBindings.CheckUpdate();
   return { hasUpdate: false, newVersion: '0.1.0', downloadURL: '' };
+}
+
+export async function DetectConflicts(source: string, target: string): Promise<any[]> {
+  if (realBindings) return realBindings.DetectConflicts(source, target);
+  return [];
 }
 
 // ---- Wails Event Subscriptions ----

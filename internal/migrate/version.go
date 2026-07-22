@@ -3,7 +3,7 @@ package migrate
 import "fmt"
 
 // Version is the current version of the MoveKit migration engine.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // CheckUpdate checks for available updates. This is a placeholder that
 // always returns no update available. A real implementation would query

@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-24T01:15:00Z",
+  "title": "Design System: MoveKit",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Windows 信任蓝", "canonical": "#0078D4", "tonalRamp": ["#001f3f", "#003a70", "#0056a3", "#0078D4", "#2b96e8", "#429CE3", "#7ab8f0", "#b5d9f8", "#e8f2fc"] },
+      "surface": { "role": "neutral", "displayName": "页面底布", "canonical": "#F3F3F3", "tonalRamp": ["#1a1a1a", "#333333", "#4d4d4d", "#616161", "#8a8a8a", "#ABABAB", "#C4C4C4", "#E0E0E0", "#F3F3F3"] },
+      "card": { "role": "neutral", "displayName": "卡片白", "canonical": "#FFFFFF", "tonalRamp": ["#1a1a1a", "#333333", "#4d4d4d", "#616161", "#8a8a8a", "#ABABAB", "#d4d4d4", "#EBEBEB", "#FFFFFF"] },
+      "success": { "role": "semantic", "displayName": "成功绿", "canonical": "#0F7B0F", "tonalRamp": ["#021702", "#042e04", "#074a07", "#0F7B0F", "#1a9e1a", "#3db83d", "#6dd06d", "#a3e5a3", "#d9f5d9"] },
+      "warning": { "role": "semantic", "displayName": "警告橙", "canonical": "#9D5D00", "tonalRamp": ["#1f1200", "#3d2400", "#5e3800", "#9D5D00", "#c47700", "#da9420", "#e8b04d", "#f2d08a", "#faebcc"] },
+      "danger": { "role": "semantic", "displayName": "危险红", "canonical": "#C42B1C", "tonalRamp": ["#270805", "#4e100a", "#791910", "#C42B1C", "#e04535", "#ea6e60", "#f0988c", "#f6c2ba", "#fce8e5"] }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Segoe UI Variable", "purpose": "Windows 11 系统字体，所有文字元素统一使用。" }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 2px 4px rgba(0, 0, 0, 0.08)", "purpose": "默认卡片与底布的微妙分离。" },
+      { "name": "elevated", "value": "0 8px 16px rgba(0, 0, 0, 0.1)", "purpose": "确认对话框等浮层的强调效果。" }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "按钮 hover、状态切换的默认缓动。" },
+      { "name": "ease-out", "value": "cubic-bezier(0, 0, 0.2, 1)", "purpose": "进度条填充的缓动曲线。" }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "主操作按钮，用于确认迁移、完成等关键操作。",
+      "html": "<button class=\"ds-btn-primary\">确认迁移</button>",
+      "css": ".ds-btn-primary { background: #0078D4; color: #fff; padding: 10px 20px; font-size: 14px; font-weight: 500; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; border: none; border-radius: 8px; cursor: pointer; transition: background 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { background: #006CBE; } .ds-btn-primary:focus-visible { outline: 2px solid #0078D4; outline-offset: 2px; } .ds-btn-primary:active { background: #005a9e; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "次要操作按钮，用于取消、回滚等辅助操作。",
+      "html": "<button class=\"ds-btn-secondary\">取消</button>",
+      "css": ".ds-btn-secondary { background: transparent; color: #616161; padding: 8px 16px; font-size: 14px; font-weight: 400; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; border: 1px solid #E0E0E0; border-radius: 8px; cursor: pointer; transition: background 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms; } .ds-btn-secondary:hover { background: #E5E5E5; border-color: #C4C4C4; } .ds-btn-secondary:focus-visible { outline: 2px solid #0078D4; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "内容容器，用于文件夹列表、磁盘选择器、确认信息等。",
+      "html": "<div class=\"ds-card\"><p style=\"margin:0;font-family:'Segoe UI Variable',sans-serif;font-size:14px;color:#1A1A1A;\">系统文件夹</p><p style=\"margin:4px 0 0;font-family:'Segoe UI Variable',sans-serif;font-size:12px;color:#616161;\">5 个文件夹，共 23.4 GB</p></div>",
+      "css": ".ds-card { background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px; padding: 16px; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; transition: box-shadow 200ms; } .ds-card:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.08); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "状态标签，用于文件夹迁移状态标记。",
+      "html": "<span class=\"ds-badge\">已迁移</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 2px 8px; font-size: 12px; font-weight: 500; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; border-radius: 9999px; background: rgba(15, 123, 15, 0.1); color: #0F7B0F; }"
+    },
+    {
+      "name": "Progress Bar",
+      "kind": "custom",
+      "refersTo": "button-primary",
+      "description": "迁移进度条，显示字节和文件数双重进度。",
+      "html": "<div class=\"ds-progress-track\"><div class=\"ds-progress-fill\" style=\"width:65%\"></div></div>",
+      "css": ".ds-progress-track { width: 100%; height: 12px; background: #E5E5E5; border-radius: 9999px; overflow: hidden; } .ds-progress-fill { height: 100%; background: #0078D4; border-radius: 9999px; transition: width 300ms cubic-bezier(0, 0, 0.2, 1); }"
+    },
+    {
+      "name": "Disk Selector Item",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "磁盘选择项，卡片式 radio button。",
+      "html": "<label class=\"ds-disk-item ds-disk-selected\"><div class=\"ds-radio-dot\"></div><div><strong>D:</strong> Data Disk<br><span style=\"color:#616161;font-size:12px;\">186.5 GB 可用 / 500 GB 总计</span></div></label>",
+      "css": ".ds-disk-item { display: flex; align-items: center; gap: 16px; padding: 16px; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px; cursor: pointer; transition: border-color 200ms, box-shadow 200ms; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; font-size: 14px; } .ds-disk-selected { border-color: #0078D4; box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2); } .ds-radio-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #0078D4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; } .ds-radio-dot::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #0078D4; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Windows 控制中心",
+    "overview": "MoveKit 的设计语言继承 Windows 11 Settings 的秩序感——每个元素都在它该在的位置，没有惊喜，只有确定性。用户打开应用时应该感到'这看起来就是 Windows 的一部分'，而不是一个第三方工具在模仿系统。\n\n这是一个 product register 的设计系统。设计服务于任务，不是展示自己。用户带着焦虑来（C 盘快满了），带着安心走（迁移完成，随时可回滚）。",
+    "keyCharacteristics": ["系统感：Segoe UI 字体、8px 圆角、蓝色主色调，与 Windows 11 视觉语言一致", "秩序感：信息层次清晰，主次分明，不填满每一寸空间", "安全感：每个操作都有明确的反馈，危险操作有警告，所有操作可回滚", "克制感：装饰性元素为零，每个像素都有功能目的"],
+    "rules": [
+      { "name": "The 10% Rule", "body": "蓝色主色调在任何屏幕上的使用面积不超过 10%。它是引导色，不是填充色。", "section": "colors" },
+      { "name": "The No-Pure-Black Rule", "body": "永远不用 #000000 作为文字颜色。#1A1A1A 是最深的值。", "section": "colors" },
+      { "name": "The Semantic Clarity Rule", "body": "红、橙、绿只用于语义（错误、警告、成功），不用于装饰。", "section": "colors" },
+      { "name": "The One-Family Rule", "body": "只使用一个字体族。Product UI 不需要 display/body 配对。", "section": "typography" },
+      { "name": "The Fixed-Scale Rule", "body": "使用固定的 rem 级别（12px → 14px → 18px → 20px），不使用 clamp() 流体排版。", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "元素在默认状态下是平的。阴影只在需要表示'这个元素在上面'时出现。", "section": "elevation" },
+      { "name": "The One-Layer Rule", "body": "不嵌套阴影。卡片在底布上有阴影，但卡片内部的元素不再有阴影。", "section": "elevation" }
+    ],
+    "dos": [
+      "使用 Segoe UI Variable 作为唯一字体族",
+      "保持蓝色主色调的克制使用——主按钮、选中状态、进度条、推荐标签",
+      "用 8px 圆角统一所有容器和按钮",
+      "用图标 + 文字 + 颜色三重编码传达状态",
+      "保持 max-w-2xl (672px) 的内容宽度",
+      "每个危险操作都有确认步骤",
+      "用 150–250ms 的过渡时间"
+    ],
+    "donts": [
+      "使用渐变背景、毛玻璃效果、或任何装饰性视觉效果",
+      "嵌套卡片",
+      "使用弹性和回弹动画（bounce/elastic easing）",
+      "用纯黑 (#000000) 作为文字颜色",
+      "在非语义场景使用红/橙/绿",
+      "使用超过两种阴影层级",
+      "让按钮看起来不像按钮"
+    ]
+  }
+}

@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	modshell32       = syscall.NewLazyDLL("shell32.dll")
+	modshell32         = syscall.NewLazyDLL("shell32.dll")
 	procSHChangeNotify = modshell32.NewProc("SHChangeNotify")
 )
 

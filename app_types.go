@@ -13,21 +13,21 @@ type FolderInfo struct {
 }
 
 type DiskInfo struct {
-	Drive       string `json:"drive"`
-	Label       string `json:"label"`
-	TotalBytes  int64  `json:"totalBytes"`
-	FreeBytes   int64  `json:"freeBytes"`
+	Drive        string `json:"drive"`
+	Label        string `json:"label"`
+	TotalBytes   int64  `json:"totalBytes"`
+	FreeBytes    int64  `json:"freeBytes"`
 	IsFixedDrive bool   `json:"isFixedDrive"`
-	IsRemovable bool   `json:"isRemovable"`
-	IsNetwork   bool   `json:"isNetwork"`
-	FileSystem  string `json:"fileSystem"`
+	IsRemovable  bool   `json:"isRemovable"`
+	IsNetwork    bool   `json:"isNetwork"`
+	FileSystem   string `json:"fileSystem"`
 }
 
 type DurationEstimate struct {
-	IsCrossVolume bool   `json:"isCrossVolume"`
+	IsCrossVolume      bool   `json:"isCrossVolume"`
 	TargetIsFixedDrive bool   `json:"targetIsFixedDrive"`
-	EstimatedSec  int    `json:"estimatedSec"`
-	EstimatedText string `json:"estimatedText"`
+	EstimatedSec       int    `json:"estimatedSec"`
+	EstimatedText      string `json:"estimatedText"`
 }
 
 type ProgressInfo struct {
@@ -109,9 +109,9 @@ type MigrationStatus struct {
 }
 
 type DiskDetail struct {
-	Drive      string `json:"drive"`
-	Label      string `json:"label"`
+	Drive        string `json:"drive"`
+	Label        string `json:"label"`
 	IsFixedDrive bool   `json:"isFixedDrive"`
-	FreeBytes  int64  `json:"freeBytes"`
-	TotalBytes int64  `json:"totalBytes"`
+	FreeBytes    int64  `json:"freeBytes"`
+	TotalBytes   int64  `json:"totalBytes"`
 }

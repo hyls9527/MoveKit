@@ -13,7 +13,7 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-var currentVersion = "0.1.0"
+var currentVersion = "0.2.0"
 
 func main() {
 	// Enforce single instance via named mutex.

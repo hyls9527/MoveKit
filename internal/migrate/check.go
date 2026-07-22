@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"unicode"
 )
 
 // dirSize returns the total size in bytes of all files under dir.
@@ -74,6 +75,16 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 	if len(driveLetter) >= 2 && driveLetter[1] == ':' {
 		driveLetter = driveLetter[:1]
 	}
+	// Validate drive letter is A-Z.
+	if len(driveLetter) != 1 || !unicode.IsLetter(rune(driveLetter[0])) {
+		return &MoveKitError{
+			Code:    ErrCodeFileSystemNotNTFS,
+			Message: "Invalid drive letter",
+			Detail:  fmt.Sprintf("Expected A-Z, got: %q", driveLetter),
+			Action:  "Select a valid drive letter (e.g. D, E, F)",
+		}
+	}
+	driveLetter = string(unicode.ToUpper(rune(driveLetter[0])))
 	volInfo, err := Sys.Volume.GetVolumeInfo(driveLetter)
 	if err != nil {
 		return &MoveKitError{

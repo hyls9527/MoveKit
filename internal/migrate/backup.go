@@ -2,9 +2,9 @@ package migrate
 
 import (
 	"encoding/json"
-	"time"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // backupsDir returns the path to %APPDATA%\MoveKit\backups and ensures it exists.
