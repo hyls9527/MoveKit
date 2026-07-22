@@ -42,7 +42,7 @@ func moveFilesSameVolume(source, target string, onProgress func(ProgressInfo)) e
 	if _, err := os.Stat(source); err != nil {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
-			Message: "Cannot access source folder before move",
+			Message: "移动前无法访问源文件夹",
 			Detail:  err.Error(),
 			Action:  "Verify the source folder exists and is accessible",
 		}
@@ -62,7 +62,7 @@ func moveFilesSameVolume(source, target string, onProgress func(ProgressInfo)) e
 		}
 		return &MoveKitError{
 			Code:    ErrCodeFileLocked,
-			Message: "Failed to move folder (files may be locked)",
+			Message: "移动文件夹失败（文件可能被锁定）",
 			Detail:  err.Error(),
 			Action:  "Close any programs using files in this folder and retry",
 		}
@@ -171,7 +171,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 	if err != nil && IsCancelled() {
 		return &MoveKitError{
 			Code:    ErrCodeFileLocked,
-			Message: "Migration was cancelled",
+			Message: "迁移已取消",
 			Detail:  err.Error(),
 			Action:  "The migration was interrupted. You can retry or roll back.",
 		}
