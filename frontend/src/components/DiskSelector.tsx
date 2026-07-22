@@ -24,7 +24,7 @@ export default function DiskSelector({ disks, selected, onSelect }: DiskSelector
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold text-text-primary">选择目标磁盘</h2>
-      <div className="space-y-2">
+      <div className="space-y-2" role="radiogroup" aria-label="选择目标磁盘">
         {disks.map(disk => {
           const disabled = disk.isRemovable || disk.isNetwork || disk.fileSystem !== 'NTFS';
           const isRecommended = recommended?.drive === disk.drive;
@@ -33,6 +33,9 @@ export default function DiskSelector({ disks, selected, onSelect }: DiskSelector
           return (
             <label
               key={disk.drive}
+              role="radio"
+              aria-checked={isSelected}
+              aria-disabled={disabled}
               className={`
                 flex items-center gap-4 p-4 rounded-fluent border transition-shadow
                 ${disabled

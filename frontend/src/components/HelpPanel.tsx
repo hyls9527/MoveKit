@@ -94,7 +94,7 @@ export default function HelpPanel({ open, onClose }: HelpPanelProps) {
             <h3 className="text-sm font-medium text-text-secondary mb-3">反馈与支持</h3>
             <div className="space-y-3">
               <a
-                href="https://github.com/nousresearch/movekit/issues"
+                href="https://github.com/hyls9527/MoveKit/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 rounded-fluent border border-border hover:border-accent/30 hover:bg-accent/5 transition-colors"
@@ -106,7 +106,7 @@ export default function HelpPanel({ open, onClose }: HelpPanelProps) {
                 </div>
               </a>
               <a
-                href="https://github.com/nousresearch/movekit"
+                href="https://github.com/hyls9527/MoveKit"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 rounded-fluent border border-border hover:border-accent/30 hover:bg-accent/5 transition-colors"

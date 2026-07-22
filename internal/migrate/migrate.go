@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	sys "github.com/movekit/movekit/internal/syscall"
@@ -19,7 +20,15 @@ type ProgressCallback func(folder, phase string, filesMoved, totalFiles int, byt
 //   - regValueName: the Shell Folders registry value name (e.g. "Desktop", "Personal")
 //   - targetDrive: the target drive letter (e.g. "D" or "D:")
 //   - onProgress: optional progress callback (may be nil)
-func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (retErr error) {
+// ConflictMode determines how file conflicts are handled during migration.
+type ConflictMode string
+
+const (
+	ConflictSkip      ConflictMode = "skip"
+	ConflictOverwrite ConflictMode = "overwrite"
+)
+
+func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conflictMode ConflictMode) (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			retErr = &MoveKitError{
@@ -123,6 +132,21 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	}
 
 	// 5. Move files.
+	// If the file move succeeds but a later step (junction/registry) fails,
+	// we must move the files back to avoid leaving them orphaned at the target.
+	var filesMovedOk bool
+	defer func() {
+		if filesMovedOk && retErr != nil {
+			log.Error("Post-move step failed (%v), rolling back file move from %s to %s",
+				retErr, maskPath(targetPath), maskPath(actualSource))
+			if rbErr := rollbackMoveFiles(targetPath, actualSource); rbErr != nil {
+				log.Error("CRITICAL: rollback of file move also failed: %v", rbErr)
+			} else {
+				log.Info("File move rollback succeeded")
+			}
+		}
+	}()
+
 	if onProgress != nil {
 		onProgress(regValueName, "moving", 0, 0, 0, 0)
 	}
@@ -130,7 +154,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 	log.Info("Moving files from %s to %s", maskPath(actualSource), maskPath(targetPath))
 	if Sys.Volume.IsCrossVolume(actualSource, targetPath) {
 		// Cross-volume: copy + delete.
-		if err := moveFilesCrossVolume(actualSource, targetPath, onProgress, regValueName); err != nil {
+		if err := moveFilesCrossVolume(actualSource, targetPath, onProgress, regValueName, conflictMode); err != nil {
 			log.Error("Cross-volume move failed: %v", err)
 			return err
 		}
@@ -147,27 +171,30 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 			return err
 		}
 	}
+	filesMovedOk = true
 	log.Info("Files moved successfully")
 
 	// 6. Create junction at original location.
-	// If source was already a junction, delete it first so we can create a new one.
-	if Sys.Junction.IsJunction(sourcePath) {
-		if err := Sys.Junction.DeleteJunction(sourcePath); err != nil {
-			log.Warn("Failed to delete old junction: %v", err)
-		}
+	// Strategy: create at temp path first, verify, then swap. This minimizes
+	// the window where the junction is missing (crash-safe).
+	tmpJunction := sourcePath + ".movekit_tmp"
+
+	// Clean up any leftover temp junction from a previous crash.
+	if _, statErr := os.Stat(tmpJunction); statErr == nil {
+		os.RemoveAll(tmpJunction)
 	}
 
-	// Ensure the source directory exists for the junction.
-	if mdErr := os.MkdirAll(sourcePath, 0700); mdErr != nil {
+	if mdErr := os.MkdirAll(tmpJunction, 0700); mdErr != nil {
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
-			Message: "Cannot create directory for junction",
+			Message: "Cannot create temp directory for junction",
 			Detail:  mdErr.Error(),
 			Action:  "Check permissions on the source location",
 		}
 	}
 
-	if err := Sys.Junction.CreateJunction(sourcePath, targetPath); err != nil {
+	if err := Sys.Junction.CreateJunction(tmpJunction, targetPath); err != nil {
+		os.RemoveAll(tmpJunction)
 		return &MoveKitError{
 			Code:    ErrCodeJunctionFailed,
 			Message: "Failed to create junction point",
@@ -175,11 +202,56 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 			Action:  "Ensure the source directory exists and you have write permission",
 		}
 	}
+
+	// Verify the temp junction actually points to our target.
+	if resolved, resErr := resolveJunctionTarget(tmpJunction); resErr != nil || !pathsEqual(resolved, targetPath) {
+		Sys.Junction.DeleteJunction(tmpJunction)
+		os.RemoveAll(tmpJunction)
+		return &MoveKitError{
+			Code:    ErrCodeJunctionFailed,
+			Message: "Junction verification failed",
+			Detail:  fmt.Sprintf("expected %s, got %s (err: %v)", targetPath, resolved, resErr),
+			Action:  "Retry the migration",
+		}
+	}
+
+	// Now swap: delete old junction, rename temp to final.
+	if Sys.Junction.IsJunction(sourcePath) {
+		if err := Sys.Junction.DeleteJunction(sourcePath); err != nil {
+			Sys.Junction.DeleteJunction(tmpJunction)
+			os.RemoveAll(tmpJunction)
+			return &MoveKitError{
+				Code:    ErrCodeJunctionFailed,
+				Message: "Failed to remove old junction during swap",
+				Detail:  err.Error(),
+				Action:  "Run as administrator and retry",
+			}
+		}
+		os.Remove(sourcePath) // remove empty dir left by junction deletion
+	}
+
+	if err := os.Rename(tmpJunction, sourcePath); err != nil {
+		// Fallback: try mklink /J via cmd.
+		Sys.Junction.DeleteJunction(tmpJunction)
+		os.RemoveAll(tmpJunction)
+		return &MoveKitError{
+			Code:    ErrCodeJunctionFailed,
+			Message: "Failed to finalize junction",
+			Detail:  err.Error(),
+			Action:  "Run as administrator and retry",
+		}
+	}
 	log.Info("Junction created: %s -> %s", maskPath(sourcePath), maskPath(targetPath))
 
-	// 7. Update registry.
-	// User Shell Folders: REG_SZ (fully expanded path, no env vars)
+	// 7. Update registry — dual-key write with rollback.
+	// User Shell Folders and Shell Folders are separate keys.
+	// Both must succeed or we roll back the first write.
 	regValue := fmt.Sprintf("%s\\%s", driveLetter+":", folderName)
+
+	// Backup old values for rollback.
+	oldUserShell, _ := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, regValueName)
+	oldShell, _ := Sys.Registry.ReadExpandString(sys.ShellFoldersKey, regValueName)
+
 	if regErr := Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, regValue); regErr != nil {
 		log.Error("Failed to update User Shell Folders: %v", regErr)
 		return &MoveKitError{
@@ -190,13 +262,18 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback) (ret
 		}
 	}
 
-	// Shell Folders: REG_SZ (fully expanded).
 	absTarget, err := filepath.Abs(targetPath)
 	if err != nil {
 		absTarget = targetPath // fallback if Abs fails
 	}
 	if err := Sys.Registry.WriteString(sys.ShellFoldersKey, regValueName, absTarget); err != nil {
-		log.Error("Failed to update Shell Folders: %v", err)
+		log.Error("Failed to update Shell Folders: %v — rolling back User Shell Folders", err)
+		// Roll back the first write.
+		if rbErr := Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, oldUserShell); rbErr != nil {
+			log.Error("CRITICAL: Rollback of User Shell Folders also failed: %v", rbErr)
+		} else if oldShell != "" {
+			Sys.Registry.WriteString(sys.ShellFoldersKey, regValueName, oldShell)
+		}
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
 			Message: "Failed to update Shell Folders registry",
@@ -259,7 +336,6 @@ func saveBackup(path string, record BackupRecord) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-
 // resolveJunctionTarget reads the reparse point to find where a junction points to.
 // Falls back to checking if the directory is accessible (non-junction case).
 func resolveJunctionTarget(junctionPath string) (string, error) {
@@ -268,4 +344,25 @@ func resolveJunctionTarget(junctionPath string) (string, error) {
 		return "", fmt.Errorf("resolve junction %s: %w", junctionPath, err)
 	}
 	return resolved, nil
+}
+
+// pathsEqual does a path comparison for Windows (case-insensitive after Clean).
+func pathsEqual(a, b string) bool {
+	return strings.EqualFold(filepath.Clean(a), filepath.Clean(b))
+}
+
+// rollbackMoveFiles moves a directory tree from src back to dst.
+// Used when the file move succeeds but a subsequent step (junction/registry)
+// fails — this prevents files from being orphaned at the target.
+func rollbackMoveFiles(src, dst string) error {
+	// Ensure dst parent exists.
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return fmt.Errorf("rollback: create parent dir %s: %w", filepath.Dir(dst), err)
+	}
+
+	if Sys.Volume.IsCrossVolume(src, dst) {
+		return rollbackCrossVolume(src, dst)
+	}
+	// Same volume: os.Rename is atomic on NTFS.
+	return os.Rename(src, dst)
 }

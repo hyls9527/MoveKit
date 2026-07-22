@@ -2,8 +2,8 @@
 package mocks
 
 import (
-	gomock "go.uber.org/mock/gomock"
 	winsyscall "github.com/movekit/movekit/internal/syscall"
+	gomock "go.uber.org/mock/gomock"
 )
 
 type MockVolumeChecker struct {

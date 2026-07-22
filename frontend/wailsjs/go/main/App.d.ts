@@ -32,6 +32,6 @@ export function Rollback(arg1:string):Promise<void>;
 
 export function SetFirstRunFlag(arg1:boolean):Promise<void>;
 
-export function StartMigration(arg1:string):Promise<void>;
+export function StartMigration(arg1:string,arg2:string):Promise<void>;
 
 export function StartupIntegrityCheck():Promise<Array<main.IntegrityIssue>>;

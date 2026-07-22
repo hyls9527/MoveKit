@@ -309,7 +309,7 @@ MoveKit 是一个 Windows 桌面应用，帮助用户一键迁移用户文件夹
 <!-- GSD:skills-start source:skills/ -->
 ## Project Skills
 
-No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, `.github/skills/`, or `.codex/skills/` with a `SKILL.md` index file.
+- **impeccable** (v3.8.0): Design language for AI coding agents. 23 commands for UI design, critique, audit, polish, and live iteration. Run `/impeccable <command>` to use. Setup: `PRODUCT.md` + `DESIGN.md` at project root.
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->

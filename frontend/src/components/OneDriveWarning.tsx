@@ -5,7 +5,7 @@ interface OneDriveWarningProps {
 
 export default function OneDriveWarning({ folders, onClose }: OneDriveWarningProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-card rounded-fluent shadow-fluent-lg border border-border max-w-md w-full mx-4 overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-6 pb-2">

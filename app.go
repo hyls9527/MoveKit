@@ -123,14 +123,14 @@ func (a *App) GetDisks() []DiskInfo {
 			continue
 		}
 		result = append(result, DiskInfo{
-			Drive:       drive + ":",
-			Label:       volInfo.FileSystem, // Label comes from volume name; FileSystem as proxy
-			TotalBytes:  totalBytes,
-			FreeBytes:   freeBytes,
-			IsFixedDrive:       volInfo.IsFixedDrive,
-			IsRemovable: volInfo.IsRemovable,
-			IsNetwork:   volInfo.IsNetwork,
-			FileSystem:  volInfo.FileSystem,
+			Drive:        drive + ":",
+			Label:        volInfo.FileSystem, // Label comes from volume name; FileSystem as proxy
+			TotalBytes:   totalBytes,
+			FreeBytes:    freeBytes,
+			IsFixedDrive: volInfo.IsFixedDrive,
+			IsRemovable:  volInfo.IsRemovable,
+			IsNetwork:    volInfo.IsNetwork,
+			FileSystem:   volInfo.FileSystem,
 		})
 	}
 	return result
@@ -199,10 +199,10 @@ func (a *App) EstimateDuration(targetDrive string) DurationEstimate {
 
 	estimatedText := formatDuration(estimatedSec)
 	return DurationEstimate{
-		IsCrossVolume: isCrossVolume,
-		TargetIsFixedDrive:   targetIsFixedDrive,
-		EstimatedSec:  estimatedSec,
-		EstimatedText: estimatedText,
+		IsCrossVolume:      isCrossVolume,
+		TargetIsFixedDrive: targetIsFixedDrive,
+		EstimatedSec:       estimatedSec,
+		EstimatedText:      estimatedText,
 	}
 }
 
@@ -267,7 +267,7 @@ func (a *App) CheckOneDriveKFM() OneDriveStatus {
 // StartMigration begins migrating all known folders to the target drive.
 // Runs in a goroutine and emits "migration:progress" and "migration:done"
 // events via Wails runtime.
-func (a *App) StartMigration(targetDrive string) {
+func (a *App) StartMigration(targetDrive string, conflictMode string) {
 	a.mu.Lock()
 	if a.migrating {
 		a.mu.Unlock()
@@ -284,6 +284,12 @@ func (a *App) StartMigration(targetDrive string) {
 		}()
 
 		migrate.ResetCancellation()
+
+		// Normalize conflict mode.
+		mode := migrate.ConflictSkip
+		if conflictMode == "overwrite" {
+			mode = migrate.ConflictOverwrite
+		}
 
 		total := len(folders.AllFolders)
 		for i, f := range folders.AllFolders {
@@ -313,10 +319,10 @@ func (a *App) StartMigration(targetDrive string) {
 			onProgress := func(folder, phase string, filesMoved, totalFiles int, bytesMoved, totalBytes int64) {
 				percent := 0
 				if totalBytes > 0 {
-					percent = int(bytesMoved * 100 / totalBytes)
+					percent = int(float64(bytesMoved) * 100 / float64(totalBytes))
 				}
-				// Scale percent to overall progress.
-				overallPercent := ((folderIdx * 100) + percent) / total
+				// Scale percent to overall progress (float64 to avoid truncation).
+				overallPercent := int((float64(folderIdx*100) + float64(percent)) / float64(total))
 				runtime.EventsEmit(a.ctx, "migration:progress", ProgressInfo{
 					Folder:     folderName,
 					Phase:      phase,
@@ -328,7 +334,7 @@ func (a *App) StartMigration(targetDrive string) {
 				})
 			}
 
-			err := migrate.Migrate(f.RegValueName, targetDrive, onProgress)
+			err := migrate.Migrate(f.RegValueName, targetDrive, onProgress, mode)
 			if err != nil {
 				errMsg := err.Error()
 				var code, detail, action, warning string

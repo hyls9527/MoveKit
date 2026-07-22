@@ -22,7 +22,7 @@ function formatBytes(bytes: number): string {
 
 export default function ConflictDialog({ conflicts, onSkip, onOverwrite, onCancel }: ConflictDialogProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-card rounded-fluent shadow-fluent-lg border border-border max-w-2xl w-full mx-4 overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-6 pb-2">

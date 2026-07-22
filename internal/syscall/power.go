@@ -10,9 +10,9 @@ var (
 
 // PowerStatus holds the system power/battery status.
 type PowerStatus struct {
-	ACLineStatus        uint8
-	BatteryFlag         uint8
-	BatteryLifePercent  uint8
+	ACLineStatus       uint8
+	BatteryFlag        uint8
+	BatteryLifePercent uint8
 }
 
 // GetPowerStatus returns the current system power status.

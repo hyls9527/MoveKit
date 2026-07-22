@@ -62,8 +62,8 @@ export function SetFirstRunFlag(arg1) {
   return window['go']['main']['App']['SetFirstRunFlag'](arg1);
 }
 
-export function StartMigration(arg1) {
-  return window['go']['main']['App']['StartMigration'](arg1);
+export function StartMigration(arg1, arg2) {
+  return window['go']['main']['App']['StartMigration'](arg1, arg2);
 }
 
 export function StartupIntegrityCheck() {

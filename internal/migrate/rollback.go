@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -51,12 +52,19 @@ func Rollback(folderName string) error {
 		}
 	}
 
-	if err := os.Rename(rec.NewPath, rec.OriginalPath); err != nil {
-		return &MoveKitError{
-			Code:    ErrCodeFileLocked,
-			Message: "Failed to move files back during rollback",
-			Detail:  err.Error(),
-			Action:  "Close any programs using files in the target folder and retry",
+	// Detect cross-volume: os.Rename fails across volumes, so use copy+delete.
+	if Sys.Volume.IsCrossVolume(rec.NewPath, rec.OriginalPath) {
+		if err := rollbackCrossVolume(rec.NewPath, rec.OriginalPath); err != nil {
+			return err
+		}
+	} else {
+		if err := os.Rename(rec.NewPath, rec.OriginalPath); err != nil {
+			return &MoveKitError{
+				Code:    ErrCodeFileLocked,
+				Message: "Failed to move files back during rollback",
+				Detail:  err.Error(),
+				Action:  "Close any programs using files in the target folder and retry",
+			}
 		}
 	}
 
@@ -90,4 +98,45 @@ func Rollback(folderName string) error {
 	}
 
 	return nil
+}
+
+// rollbackCrossVolume moves a directory across volumes by copying each file
+// then removing the source. Used when os.Rename would fail across volumes.
+func rollbackCrossVolume(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		dstPath := filepath.Join(dst, relPath)
+
+		if d.IsDir() {
+			return os.MkdirAll(dstPath, 0755)
+		}
+
+		// Copy file with ACL preservation.
+		if err := Sys.File.CopyFileWithACL(path, dstPath, nil); err != nil {
+			return &MoveKitError{
+				Code:    ErrCodeFileLocked,
+				Message: "Failed to copy file during rollback",
+				Detail:  fmt.Sprintf("%s: %v", relPath, err),
+				Action:  "Close any programs using files in the target folder and retry",
+			}
+		}
+
+		// Remove source after successful copy.
+		if err := os.Remove(path); err != nil {
+			return &MoveKitError{
+				Code:    ErrCodeFileLocked,
+				Message: "Failed to remove source file during rollback",
+				Detail:  fmt.Sprintf("%s: %v", relPath, err),
+				Action:  "Close any programs using files in the target folder and retry",
+			}
+		}
+
+		return nil
+	})
 }

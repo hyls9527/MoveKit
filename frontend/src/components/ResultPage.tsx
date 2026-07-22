@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FolderInfo } from '../types';
 
 function formatBytes(bytes: number): string {
@@ -16,7 +17,17 @@ interface ResultPageProps {
 }
 
 export default function ResultPage({ success, folders, freedBytes, onRollback, onDone }: ResultPageProps) {
+  const [rollingBack, setRollingBack] = useState<string | null>(null);
   const migratedFolders = folders.filter(f => f.status === 'migrated');
+
+  const handleRollback = async (folderName: string) => {
+    setRollingBack(folderName);
+    try {
+      await onRollback(folderName);
+    } finally {
+      setRollingBack(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -68,10 +79,17 @@ export default function ResultPage({ success, folders, freedBytes, onRollback, o
               </div>
               {isMigrated && (
                 <button
-                  onClick={() => onRollback(folder.name)}
-                  className="ml-4 px-3 py-1.5 text-xs text-text-secondary rounded-fluent border border-border hover:bg-surface-alt transition-colors flex-shrink-0"
+                  onClick={() => handleRollback(folder.name)}
+                  disabled={rollingBack !== null}
+                  className={`ml-4 px-3 py-1.5 text-xs rounded-fluent border transition-colors flex-shrink-0 ${
+                    rollingBack === folder.name
+                      ? 'text-accent border-accent/30 bg-accent/5 cursor-wait'
+                      : rollingBack !== null
+                        ? 'text-text-disabled border-border cursor-not-allowed'
+                        : 'text-text-secondary border-border hover:bg-surface-alt'
+                  }`}
                 >
-                  回滚
+                  {rollingBack === folder.name ? '正在回滚…' : '回滚'}
                 </button>
               )}
             </div>
@@ -92,12 +110,21 @@ export default function ResultPage({ success, folders, freedBytes, onRollback, o
       <div className="flex gap-3">
         {success && migratedFolders.length > 0 && (
           <button
-            onClick={() => {
-              migratedFolders.forEach(f => onRollback(f.name));
+            onClick={async () => {
+              setRollingBack('__all__');
+              for (const f of migratedFolders) {
+                await onRollback(f.name);
+              }
+              setRollingBack(null);
             }}
-            className="px-5 py-2.5 text-sm font-medium text-text-secondary rounded-fluent border border-border hover:bg-surface-alt transition-colors"
+            disabled={rollingBack !== null}
+            className={`px-5 py-2.5 text-sm font-medium rounded-fluent border transition-colors ${
+              rollingBack !== null
+                ? 'text-text-disabled border-border cursor-not-allowed'
+                : 'text-text-secondary border-border hover:bg-surface-alt'
+            }`}
           >
-            一键回滚
+            {rollingBack === '__all__' ? '正在回滚…' : '一键回滚'}
           </button>
         )}
         <button

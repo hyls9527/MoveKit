@@ -79,7 +79,7 @@ func moveFilesSameVolume(source, target string, onProgress func(ProgressInfo)) e
 // moveFilesCrossVolume moves files across different drive volumes by copying
 // each file individually and then deleting the source. Supports cancellation
 // via the atomic cancelled flag and reports progress through the callback.
-func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder string) error {
+func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder string, conflictMode ConflictMode) error {
 	ResetCancellation()
 
 	// Count total files for progress reporting.
@@ -128,6 +128,20 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 
 		if d.IsDir() {
 			return os.MkdirAll(dstPath, 0755)
+		}
+
+		// Handle file conflicts based on conflict mode.
+		if _, statErr := os.Stat(dstPath); statErr == nil {
+			switch conflictMode {
+			case ConflictSkip:
+				// Skip this file — do not copy, do not remove source.
+				return nil
+			case ConflictOverwrite:
+				// Remove existing target file before copying.
+				if err := os.Remove(dstPath); err != nil {
+					return fmt.Errorf("remove existing target %s: %w", relPath, err)
+				}
+			}
 		}
 
 		// Copy the file using Windows CopyFileExW with ACL preservation.
