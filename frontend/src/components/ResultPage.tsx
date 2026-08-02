@@ -12,11 +12,12 @@ interface ResultPageProps {
   success: boolean;
   folders: FolderInfo[];
   freedBytes: number;
+  cFreeBytes: number;
   onRollback: (folderName: string) => void;
   onDone: () => void;
 }
 
-export default function ResultPage({ success, folders, freedBytes, onRollback, onDone }: ResultPageProps) {
+export default function ResultPage({ success, folders, freedBytes, cFreeBytes, onRollback, onDone }: ResultPageProps) {
   const [rollingBack, setRollingBack] = useState<string | null>(null);
   const migratedFolders = folders.filter(f => f.status === 'migrated');
 
@@ -52,6 +53,9 @@ export default function ResultPage({ success, folders, freedBytes, onRollback, o
         <div className="p-4 rounded-fluent bg-card border border-border">
           <p className="text-text-secondary text-sm">共释放 C 盘空间</p>
           <p className="text-2xl font-bold text-accent">{formatBytes(freedBytes)}</p>
+          <p className="text-text-secondary text-sm mt-2">
+            C 盘当前可用 <span className="font-medium text-text-primary">{formatBytes(cFreeBytes)}</span>
+          </p>
         </div>
       )}
 

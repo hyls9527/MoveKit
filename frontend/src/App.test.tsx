@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     onProgress: vi.fn(),
     onDone: vi.fn(),
     healthCheck: vi.fn(),
+    checkUpdate: vi.fn(),
   }
 })
 
@@ -36,6 +37,7 @@ vi.mock('./lib/wails', () => ({
   onMigrationProgress: mocks.onProgress,
   onMigrationDone: mocks.onDone,
   HealthCheck: mocks.healthCheck,
+  CheckUpdate: mocks.checkUpdate,
 }))
 
 import App from './App'
@@ -98,6 +100,7 @@ function setup() {
     return () => {}
   })
   mocks.healthCheck.mockReset().mockResolvedValue(true)
+  mocks.checkUpdate.mockReset().mockResolvedValue({ hasUpdate: false, newVersion: '0.2.1', downloadURL: '' })
 }
 
 async function startMigrationToConfirmPage() {
@@ -145,5 +148,22 @@ describe('App migration flow', () => {
     doneCb({ success: false, code: 'CANCELED', error: '迁移已取消，正在恢复已移动的文件' })
     expect(await screen.findByText('迁移已取消，已移动的文件已恢复到原位置')).toBeDefined()
     expect(screen.getByRole('button', { name: '开始迁移' })).toBeDefined()
+  })
+
+  it('shows update banner when a newer version is available', async () => {
+    mocks.checkUpdate.mockResolvedValue({
+      hasUpdate: true,
+      newVersion: '9.9.9',
+      downloadURL: 'https://example.com/releases/tag/v9.9.9',
+    })
+    render(<App />)
+    await screen.findByText('桌面')
+    fireEvent.click(screen.getByRole('button', { name: '检查更新' }))
+    await waitFor(() => expect(mocks.checkUpdate).toHaveBeenCalled())
+    expect(await screen.findByText('v9.9.9')).toBeDefined()
+    expect(screen.getByText(/发现新版本/)).toBeDefined()
+    expect(screen.getByRole('link', { name: '去下载' }).getAttribute('href')).toBe(
+      'https://example.com/releases/tag/v9.9.9',
+    )
   })
 })

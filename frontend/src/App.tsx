@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, DiskInfo, FolderInfo, ProgressInfo } from './types';
-import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
+import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, CancelMigration, CheckUpdate, onMigrationProgress, onMigrationDone } from './lib/wails';
 import DiskSelector from './components/DiskSelector';
 import { ErrorBoundary as SectionErrorBoundary } from './components/ErrorBoundary';
 import FolderList from './components/FolderList';
@@ -29,6 +29,10 @@ function AppInner() {
   });
   const [error, setError] = useState('');
   const [freedBytes, setFreedBytes] = useState(0);
+  const [cFreeBytes, setCFreeBytes] = useState(0);
+  const [updateInfo, setUpdateInfo] = useState<{ hasUpdate: boolean; newVersion: string; downloadURL: string } | null>(null);
+  const [updateError, setUpdateError] = useState('');
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   // Dialog visibility states
   const [showOneDriveWarning, setShowOneDriveWarning] = useState(false);
@@ -118,6 +122,20 @@ function AppInner() {
     // Do NOT set state here — let the backend event drive state transitions.
   };
 
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    setUpdateError('');
+    setUpdateInfo(null);
+    try {
+      const info = await CheckUpdate();
+      setUpdateInfo(info);
+    } catch {
+      setUpdateError('检查更新失败，请检查网络后重试');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
   // Ref to access latest progress in event callbacks without re-subscribing.
   const progressRef = useRef(progress);
   progressRef.current = progress;
@@ -140,6 +158,8 @@ function AppInner() {
             const [f, d] = await Promise.all([GetFolders(), GetDisks()]);
             setFolders(f);
             setDisks(d);
+            const cDrive = d.find(di => di.drive.toUpperCase() === 'C:');
+            setCFreeBytes(cDrive ? cDrive.freeBytes : 0);
             setFreedBytes(
               preMigrationFoldersRef.current
                 .filter(fi => fi.status !== 'migrated' && fi.sizeBytes > 0)
@@ -220,11 +240,64 @@ function AppInner() {
           >
             ❓
           </button>
+          <button
+            onClick={handleCheckUpdate}
+            disabled={checkingUpdate}
+            className="w-8 h-8 rounded-fluent flex items-center justify-center text-text-secondary hover:bg-surface-alt transition-colors"
+            title="检查更新"
+            aria-label="检查更新"
+          >
+            🔄
+          </button>
         </div>
       </header>
 
       {/* Main content */}
       <main className="max-w-2xl mx-auto p-6 space-y-8">
+        {/* Update banner */}
+        {updateInfo?.hasUpdate && (
+          <div className="p-4 rounded-fluent bg-accent/5 border border-accent/10 flex items-center gap-3">
+            <span className="text-lg">📦</span>
+            <div className="flex-1 text-sm text-text-secondary">
+              发现新版本 <span className="font-medium text-text-primary">v{updateInfo.newVersion}</span>，包含修复与改进
+            </div>
+            <a
+              href={updateInfo.downloadURL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 text-xs font-medium text-white rounded-fluent bg-accent hover:bg-accent-dark transition-colors flex-shrink-0"
+            >
+              去下载
+            </a>
+            <button
+              onClick={() => setUpdateInfo(null)}
+              className="text-text-secondary hover:text-text-primary flex-shrink-0"
+              aria-label="关闭更新提示"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {updateError && (
+          <div className="p-4 rounded-fluent bg-warning/5 border border-warning/20 flex items-center gap-3">
+            <span className="text-warning">⚠</span>
+            <p className="flex-1 text-sm text-warning">{updateError}</p>
+            <button
+              onClick={() => setUpdateError('')}
+              className="text-text-secondary hover:text-text-primary"
+              aria-label="关闭更新错误提示"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {checkingUpdate && (
+          <div className="p-4 rounded-fluent bg-card border border-border flex items-center gap-3">
+            <div className="animate-spin w-4 h-4 border-2 border-accent border-t-transparent rounded-full" />
+            <p className="text-sm text-text-secondary">正在检查更新…</p>
+          </div>
+        )}
+
         {/* Error banner */}
         {error && (
           <div className="p-4 rounded-fluent bg-danger/10 border border-danger/20 flex items-start gap-3">
@@ -323,6 +396,7 @@ function AppInner() {
             success={state === 'completed'}
             folders={folders}
             freedBytes={freedBytes}
+            cFreeBytes={cFreeBytes}
             onRollback={handleRollback}
             onDone={handleDone}
           />
