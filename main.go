@@ -8,8 +8,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
-	"github.com/movekit/movekit/internal/migrate"
-	winsyscall "github.com/movekit/movekit/internal/syscall"
+	"github.com/hyls9527/MoveKit/internal/migrate"
+	winsyscall "github.com/hyls9527/MoveKit/internal/syscall"
 )
 
 //go:embed all:frontend/dist

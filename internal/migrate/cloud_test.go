@@ -3,7 +3,7 @@ package migrate
 import (
 	"testing"
 
-	sys "github.com/movekit/movekit/internal/syscall"
+	sys "github.com/hyls9527/MoveKit/internal/syscall"
 )
 
 func TestDetectCloudSync_ReturnsSlice(t *testing.T) {

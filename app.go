@@ -12,9 +12,9 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/movekit/movekit/internal/folders"
-	"github.com/movekit/movekit/internal/migrate"
-	sys "github.com/movekit/movekit/internal/syscall"
+	"github.com/hyls9527/MoveKit/internal/folders"
+	"github.com/hyls9527/MoveKit/internal/migrate"
+	sys "github.com/hyls9527/MoveKit/internal/syscall"
 )
 
 // App is the main Wails application struct. All exported methods are
@@ -438,7 +438,7 @@ func (a *App) Rollback(regValueName string) error {
 func (a *App) StartupIntegrityCheck() []IntegrityIssue {
 	var issues []IntegrityIssue
 
-	backups, err := migrate.LoadAllBackups()
+	backups, warnings, err := migrate.LoadAllBackups()
 	if err != nil {
 		issues = append(issues, IntegrityIssue{
 			Type:    "error",
@@ -446,6 +446,13 @@ func (a *App) StartupIntegrityCheck() []IntegrityIssue {
 			Message: "Cannot load backup records: " + err.Error(),
 		})
 		return issues
+	}
+	for _, w := range warnings {
+		issues = append(issues, IntegrityIssue{
+			Type:    "backup_corrupt",
+			Folder:  "",
+			Message: w,
+		})
 	}
 
 	for _, rec := range backups {

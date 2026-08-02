@@ -1,8 +1,10 @@
 package migrate
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -61,7 +63,7 @@ func TestSaveLoadDelete(t *testing.T) {
 	}
 
 	// LoadAllBackups.
-	all, err := LoadAllBackups()
+	all, _, err := LoadAllBackups()
 	if err != nil {
 		t.Fatalf("LoadAllBackups: %v", err)
 	}
@@ -92,7 +94,7 @@ func TestLoadAllBackups_EmptyDir(t *testing.T) {
 	t.Setenv("APPDATA", tmpDir)
 	defer t.Setenv("APPDATA", origAppData)
 
-	all, err := LoadAllBackups()
+	all, _, err := LoadAllBackups()
 	if err != nil {
 		t.Fatalf("LoadAllBackups on empty dir: %v", err)
 	}
@@ -129,5 +131,49 @@ func TestLoadBackup_MalformedJSON(t *testing.T) {
 
 	if _, err := LoadBackup("Desktop"); err == nil {
 		t.Error("malformed backup JSON should return an error")
+	}
+}
+
+func TestLoadAllBackups_MalformedJSONReportsWarning(t *testing.T) {
+	origAppData := os.Getenv("APPDATA")
+	tmpDir := t.TempDir()
+	t.Setenv("APPDATA", tmpDir)
+	defer t.Setenv("APPDATA", origAppData)
+
+	backupDir := filepath.Join(tmpDir, "MoveKit", "backups")
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	good := BackupRecord{
+		Version:      1,
+		RegValueName: "Desktop",
+		OriginalPath: `C:\Users\test\Desktop`,
+		NewPath:      `D:\Desktop`,
+		Status:       "complete",
+	}
+	data, err := json.Marshal(good)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(backupDir, "Desktop.json"), data, 0644); err != nil {
+		t.Fatalf("write good backup: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(backupDir, "Broken.json"), []byte("{broken"), 0644); err != nil {
+		t.Fatalf("write broken backup: %v", err)
+	}
+
+	all, warnings, err := LoadAllBackups()
+	if err != nil {
+		t.Fatalf("LoadAllBackups: %v", err)
+	}
+	if len(all) != 1 {
+		t.Errorf("expected 1 valid backup, got %d", len(all))
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning for corrupted backup, got %d: %v", len(warnings), warnings)
+	}
+	if !strings.Contains(warnings[0], "Broken.json") {
+		t.Errorf("warning should mention Broken.json, got %q", warnings[0])
 	}
 }
