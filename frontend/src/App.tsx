@@ -150,7 +150,7 @@ function AppInner() {
           }
         })();
       } else {
-        if (event.code === 'CANCELLED') {
+        if (event.code === 'CANCELED') {
           setError('迁移已取消，已移动的文件已恢复到原位置');
           setState('idle');
           // Refresh state so the UI reflects the restored folders.

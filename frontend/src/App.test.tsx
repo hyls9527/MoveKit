@@ -142,7 +142,7 @@ describe('App migration flow', () => {
   it('shows cancel message and returns to idle when migration is cancelled', async () => {
     await startMigrationToConfirmPage()
     const doneCb = mocks.doneCallbacks[0]
-    doneCb({ success: false, code: 'CANCELLED', error: '迁移已取消，正在恢复已移动的文件' })
+    doneCb({ success: false, code: 'CANCELED', error: '迁移已取消，正在恢复已移动的文件' })
     expect(await screen.findByText('迁移已取消，已移动的文件已恢复到原位置')).toBeDefined()
     expect(screen.getByRole('button', { name: '开始迁移' })).toBeDefined()
   })

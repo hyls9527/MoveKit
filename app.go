@@ -35,7 +35,9 @@ type dirStats struct {
 // repeated walks.
 func (a *App) cachedDirStats(path string) (dirStats, error) {
 	if cached, ok := a.statsCache.Load(path); ok {
-		return cached.(dirStats), nil
+		if ds, ok := cached.(dirStats); ok {
+			return ds, nil
+		}
 	}
 	size, files, err := migrate.DirStats(path)
 	if err != nil {
@@ -60,19 +62,20 @@ func (a *App) clearSizeCache() {
 // progressThrottle limits progress events to one per interval, except phase
 // transitions ("starting"/"complete") which always pass through.
 type progressThrottle struct {
-	interval time.Duration
-	last     time.Time
+	interval     time.Duration
+	lastUnixNano int64
 }
 
 func (t *progressThrottle) allow(phase string, now time.Time) bool {
+	nowNano := now.UnixNano()
 	if phase == "starting" || phase == "complete" {
-		t.last = now
+		t.lastUnixNano = nowNano
 		return true
 	}
-	if !t.last.IsZero() && now.Sub(t.last) < t.interval {
+	if t.lastUnixNano != 0 && nowNano-t.lastUnixNano < int64(t.interval) {
 		return false
 	}
-	t.last = now
+	t.lastUnixNano = nowNano
 	return true
 }
 

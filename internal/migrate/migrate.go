@@ -135,7 +135,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	// location; a self-referencing record would make rollback impossible.
 	if strings.EqualFold(filepath.Clean(targetPath), filepath.Clean(actualSource)) {
 		log.Info("Folder already resides at %s, migration is a no-op", maskPath(targetPath))
-		if _, err := LoadBackup(regValueName); err != nil {
+		if _, loadErr := LoadBackup(regValueName); loadErr != nil {
 			// No backup record exists (e.g. the folder was moved by other
 			// means); there is nothing meaningful to record for rollback.
 			log.Info("No backup record for %s; nothing to do", regValueName)
@@ -165,9 +165,9 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 		if _, statErr := os.Stat(targetPath); statErr == nil {
 			// PreCheck already rejects an existing target directory, so this
 			// only runs in the TOCTOU window (target created meanwhile).
-			conflicts, err := DetectConflicts(actualSource, targetPath)
-			if err != nil {
-				log.Warn("Conflict detection failed: %v", err)
+			conflicts, conflictErr := DetectConflicts(actualSource, targetPath)
+			if conflictErr != nil {
+				log.Warn("Conflict detection failed: %v", conflictErr)
 			}
 			if len(conflicts) > 0 {
 				log.Error("Found %d file conflicts, blocking migration", len(conflicts))
@@ -217,8 +217,8 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 			} else {
 				log.Info("Files restored after failed migration")
 				backup.Status = "rolled_back"
-				if err := saveBackup(backupPath, backup); err != nil {
-					log.Warn("Failed to mark backup as rolled_back: %v", err)
+				if saveErr := saveBackup(backupPath, backup); saveErr != nil {
+					log.Warn("Failed to mark backup as rolled_back: %v", saveErr)
 				}
 			}
 		}
@@ -489,13 +489,13 @@ func mergeDirBack(src, dst string) error {
 		dstPath := filepath.Join(dst, relPath)
 
 		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0755)
+			return os.MkdirAll(dstPath, 0700)
 		}
 
 		if _, err := os.Stat(dstPath); err == nil {
 			// The source file still exists, so the copy at the target is a
 			// duplicate (or a partial copy). Source wins.
-			return os.Remove(path)
+			return os.Remove(path) //nolint:gosec // G122: restore walk; symlinks skipped, path derives from WalkDir
 		} else if !os.IsNotExist(err) {
 			return err
 		}
@@ -503,7 +503,7 @@ func mergeDirBack(src, dst string) error {
 		if err := copyFilePlain(path, dstPath); err != nil {
 			return fmt.Errorf("restore copy %s: %w", relPath, err)
 		}
-		if err := os.Remove(path); err != nil {
+		if err := os.Remove(path); err != nil { //nolint:gosec // G122: restore walk; symlinks skipped
 			return fmt.Errorf("restore remove %s: %w", relPath, err)
 		}
 		return nil
@@ -514,21 +514,21 @@ func mergeDirBack(src, dst string) error {
 // only during restore-after-failure, where the priority is returning data to
 // its original location even if the ACL-aware copy path is itself broken.
 func copyFilePlain(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(src) //nolint:gosec // G304: restore-only helper; src is a WalkDir path under the migration target
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dst), 0700); err != nil {
 		return err
 	}
-	out, err := os.Create(dst)
+	out, err := os.Create(dst) //nolint:gosec // G304: restore-only helper; dst is under the original source path
 	if err != nil {
 		return err
 	}
 	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
+		_ = out.Close()
 		return err
 	}
 	return out.Close()

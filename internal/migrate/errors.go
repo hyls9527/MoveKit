@@ -20,7 +20,7 @@ const (
 	ErrCodeTargetInSource    = "TARGET_IN_SOURCE"
 	ErrCodeSecuritySoftware  = "SECURITY_SOFTWARE_DETECTED"
 	ErrCodeBatteryWarning    = "BATTERY_WARNING"
-	ErrCodeCancelled         = "CANCELLED"
+	ErrCodeCancelled         = "CANCELED"
 )
 
 type MoveKitError struct {
