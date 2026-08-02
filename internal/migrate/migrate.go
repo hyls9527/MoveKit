@@ -520,8 +520,8 @@ func copyFilePlain(src, dst string) error {
 	}
 	defer func() { _ = in.Close() }()
 
-	if err := os.MkdirAll(filepath.Dir(dst), 0700); err != nil {
-		return err
+	if mkErr := os.MkdirAll(filepath.Dir(dst), 0700); mkErr != nil {
+		return mkErr
 	}
 	out, err := os.Create(dst) //nolint:gosec // G304: restore-only helper; dst is under the original source path
 	if err != nil {
