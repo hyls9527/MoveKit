@@ -65,17 +65,6 @@ type CloudProvider struct {
 	Folder string `json:"folder"`
 }
 
-type BackupRecord struct {
-	CreatedAt     time.Time `json:"createdAt"`
-	Folder        string    `json:"folder"`
-	GUID          string    `json:"guid"`
-	OriginalPath  string    `json:"originalPath"`
-	NewPath       string    `json:"newPath"`
-	RegistryValue string    `json:"registryValue"`
-	Status        string    `json:"status"`
-	Version       int       `json:"version"`
-}
-
 type MigrationState struct {
 	StartTime  time.Time `json:"startTime"`
 	Status     string    `json:"status"`

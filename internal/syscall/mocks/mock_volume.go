@@ -2,7 +2,7 @@
 package mocks
 
 import (
-	winsyscall "github.com/movekit/movekit/internal/syscall"
+	winsyscall "github.com/hyls9527/MoveKit/internal/syscall"
 	gomock "go.uber.org/mock/gomock"
 )
 

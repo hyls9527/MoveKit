@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/movekit/movekit/internal/migrate"
+	"github.com/hyls9527/MoveKit/internal/migrate"
 )
 
 func TestDirSize_NonexistentPath(t *testing.T) {

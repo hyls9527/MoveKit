@@ -1,6 +1,6 @@
 package migrate
 
-import sys "github.com/movekit/movekit/internal/syscall"
+import sys "github.com/hyls9527/MoveKit/internal/syscall"
 
 // Sys is the package-level syscall abstraction layer used by the migrate
 // package. In production, it is initialized to the real Win32 API implementation.

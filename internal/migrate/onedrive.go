@@ -3,7 +3,7 @@ package migrate
 import (
 	"strings"
 
-	sys "github.com/movekit/movekit/internal/syscall"
+	sys "github.com/hyls9527/MoveKit/internal/syscall"
 )
 
 // OneDriveStatus holds the result of OneDrive Known Folder Move detection.

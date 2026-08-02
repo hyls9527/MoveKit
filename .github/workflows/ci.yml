@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.5"
+          go-version: "1.25.0"
           cache: true
 
       - uses: actions/setup-node@v4
@@ -54,7 +54,7 @@ jobs:
       - name: Run frontend tests
         run: cd frontend && npm run test
 
-  test:
+  vuln:
     needs: lint
     runs-on: windows-latest
     timeout-minutes: 15
@@ -63,7 +63,23 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.5"
+          go-version: "1.25.0"
+          cache: true
+
+      - name: Run govulncheck dependency scan
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        shell: pwsh
+
+  test:
+    needs: vuln
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.0"
           cache: true
 
       - uses: actions/cache@v4
@@ -88,6 +104,32 @@ jobs:
         run: go tool cover -func=coverage.out
         shell: bash
 
+      - name: Enforce coverage thresholds
+        shell: pwsh
+        run: |
+          $lines = Get-Content coverage.out | Where-Object { $_ -notmatch '^mode:' }
+          $totalStmts = 0; $coveredStmts = 0
+          $mainStmts = 0; $mainCov = 0
+          $bizStmts = 0; $bizCov = 0
+          foreach ($l in $lines) {
+            $parts = $l -split ' '
+            $s = [int]$parts[1]; $c = [int]$parts[2]
+            $totalStmts += $s
+            if ($c -gt 0) { $coveredStmts += $s }
+            $isMain = $l -match '^github\.com/hyls9527/MoveKit/(app|main|app_types)\.go:'
+            $isGenerated = $l -match 'mocks/|flatted'
+            if ($isMain) { $mainStmts += $s; if ($c -gt 0) { $mainCov += $s } }
+            if (-not $isGenerated) { $bizStmts += $s; if ($c -gt 0) { $bizCov += $s } }
+          }
+          $totalPct = 100.0 * $coveredStmts / $totalStmts
+          $mainPct = 100.0 * $mainCov / $mainStmts
+          $bizPct = 100.0 * $bizCov / $bizStmts
+          Write-Host ("coverage total={0:N1}% main={1:N1}% business={2:N1}%" -f $totalPct, $mainPct, $bizPct)
+          if ($mainPct -lt 55.0 -or $bizPct -lt 55.0) {
+            Write-Host "::error::Coverage below threshold (main >= 55%, business >= 55%)"
+            exit 1
+          }
+
       - name: Upload test report and coverage
         if: always()
         continue-on-error: true
@@ -107,7 +149,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.5"
+          go-version: "1.25.0"
           cache: true
 
       - uses: actions/setup-node@v4
@@ -142,7 +184,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.5"
+          go-version: "1.25.0"
           cache: true
 
       - uses: actions/setup-node@v4

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/movekit/movekit/internal/folders"
-	sys "github.com/movekit/movekit/internal/syscall"
+	"github.com/hyls9527/MoveKit/internal/folders"
+	sys "github.com/hyls9527/MoveKit/internal/syscall"
 )
 
 // ProgressCallback is called during migration to report progress.
@@ -391,8 +391,8 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	return nil
 }
 
-// BackupRecord mirrors the structure from app_types.go but lives in the migrate package
-// to avoid circular imports.
+// BackupRecord is the single source of truth for persisted migration backup
+// records. It lives in the migrate package; the app layer uses it directly.
 type BackupRecord struct {
 	CreatedAt     time.Time `json:"createdAt"`
 	OriginalPath  string    `json:"originalPath"`

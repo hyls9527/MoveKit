@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -50,17 +51,20 @@ func LoadBackup(folder string) (*BackupRecord, error) {
 }
 
 // LoadAllBackups reads every backup JSON file from the backups directory.
-func LoadAllBackups() ([]BackupRecord, error) {
+// Corrupted or unreadable files are skipped and reported in the returned
+// warnings slice so callers can surface them instead of failing silently.
+func LoadAllBackups() ([]BackupRecord, []string, error) {
 	dir := backupsDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
 	var records []BackupRecord
+	var warnings []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -71,15 +75,17 @@ func LoadAllBackups() ([]BackupRecord, error) {
 		// #nosec G304 -- path is built from %APPDATA% and directory entries
 		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
 		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("备份文件 %s 无法读取: %v", entry.Name(), err))
 			continue
 		}
 		var rec BackupRecord
 		if err := json.Unmarshal(data, &rec); err != nil {
+			warnings = append(warnings, fmt.Sprintf("备份文件 %s 已损坏，已跳过: %v", entry.Name(), err))
 			continue
 		}
 		records = append(records, rec)
 	}
-	return records, nil
+	return records, warnings, nil
 }
 
 // DeleteBackup removes the backup JSON file for the given folder name.

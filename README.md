@@ -50,13 +50,13 @@ MoveKit 把这件事变成一次点击：选盘→确认→完成。迁移后回
 
 ## 技术栈
 
-`Go 1.23.5` · `Wails v2` · `React 19` · `TypeScript` · `Tailwind CSS v4` · `Win32 API` · `Windows 10/11`
+`Go 1.25` · `Wails v2` · `React 19` · `TypeScript` · `Tailwind CSS v4` · `Win32 API` · `Windows 10/11`
 
 ## 开发
 
 ### 环境要求
 
-- Go 1.22+
+- Go 1.25+
 - Node.js 22+
 - Wails v2 (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
 

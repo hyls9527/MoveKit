@@ -57,13 +57,13 @@ type PowerChecker interface {
 // layer backed by real Win32 API calls. In tests, construct a SyscallLayer
 // with mock implementations to avoid touching the real Windows API.
 //
-//go:generate mockgen -destination=mocks/mock_registry.go -package=mocks github.com/movekit/movekit/internal/syscall RegistryAccessor
-//go:generate mockgen -destination=mocks/mock_process.go -package=mocks github.com/movekit/movekit/internal/syscall ProcessChecker
-//go:generate mockgen -destination=mocks/mock_volume.go -package=mocks github.com/movekit/movekit/internal/syscall VolumeChecker
-//go:generate mockgen -destination=mocks/mock_junction.go -package=mocks github.com/movekit/movekit/internal/syscall JunctionOps
-//go:generate mockgen -destination=mocks/mock_shell.go -package=mocks github.com/movekit/movekit/internal/syscall ShellNotifier
-//go:generate mockgen -destination=mocks/mock_fileops.go -package=mocks github.com/movekit/movekit/internal/syscall FileOps
-//go:generate mockgen -destination=mocks/mock_power.go -package=mocks github.com/movekit/movekit/internal/syscall PowerChecker
+//go:generate mockgen -destination=mocks/mock_registry.go -package=mocks github.com/hyls9527/MoveKit/internal/syscall RegistryAccessor
+//go:generate mockgen -destination=mocks/mock_process.go -package=mocks github.com/hyls9527/MoveKit/internal/syscall ProcessChecker
+//go:generate mockgen -destination=mocks/mock_volume.go -package=mocks github.com/hyls9527/MoveKit/internal/syscall VolumeChecker
+//go:generate mockgen -destination=mocks/mock_junction.go -package=mocks github.com/hyls9527/MoveKit/internal/syscall JunctionOps
+//go:generate mockgen -destination=mocks/mock_shell.go -package=mocks github.com/hyls9527/MoveKit/internal/syscall ShellNotifier
+//go:generate mockgen -destination=mocks/mock_fileops.go -package=mocks github.com/hyls9527/MoveKit/internal/syscall FileOps
+//go:generate mockgen -destination=mocks/mock_power.go -package=mocks github.com/hyls9527/MoveKit/internal/syscall PowerChecker
 type SyscallLayer struct {
 	Registry RegistryAccessor
 	Process  ProcessChecker

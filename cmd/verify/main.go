@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/movekit/movekit/internal/folders"
-	"github.com/movekit/movekit/internal/migrate"
-	sys "github.com/movekit/movekit/internal/syscall"
+	"github.com/hyls9527/MoveKit/internal/folders"
+	"github.com/hyls9527/MoveKit/internal/migrate"
+	sys "github.com/hyls9527/MoveKit/internal/syscall"
 )
 
 func main() {
@@ -95,11 +95,14 @@ func main() {
 
 	// 9. LoadAllBackups
 	fmt.Println("\n[9] LoadAllBackups")
-	backups, err := migrate.LoadAllBackups()
+	backups, warnings, err := migrate.LoadAllBackups()
 	if err != nil {
 		fmt.Printf("  WARN: %v\n", err)
 	} else {
 		fmt.Printf("  OK count=%d\n", len(backups))
+		for _, w := range warnings {
+			fmt.Printf("  WARN %s\n", w)
+		}
 	}
 
 	// 10. CheckUpdate
