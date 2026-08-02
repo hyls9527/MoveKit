@@ -1,16 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, DiskInfo, FolderInfo, ProgressInfo } from './types';
-import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, GetVersion, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
+import { GetFolders, GetDisks, StartMigration, Rollback, CheckOneDriveKFM, CancelMigration, onMigrationProgress, onMigrationDone } from './lib/wails';
 import DiskSelector from './components/DiskSelector';
 import { ErrorBoundary as SectionErrorBoundary } from './components/ErrorBoundary';
 import FolderList from './components/FolderList';
 import ProgressBar from './components/ProgressBar';
 import ResultPage from './components/ResultPage';
 import OneDriveWarning from './components/OneDriveWarning';
-import ConflictDialog, { type ConflictFile } from './components/ConflictDialog';
-import CloudWarning from './components/CloudWarning';
 import DefenderInfo from './components/DefenderInfo';
-import UpdateNotice from './components/UpdateNotice';
 import { ErrorBoundary, useHeartbeat } from './components/ErrorBoundary';
 import FirstRunGuide from './components/FirstRunGuide';
 import HelpPanel from './components/HelpPanel';
@@ -36,13 +33,7 @@ function AppInner() {
   // Dialog visibility states
   const [showOneDriveWarning, setShowOneDriveWarning] = useState(false);
   const [oneDriveFolders, setOneDriveFolders] = useState<string[]>([]);
-  const [showConflictDialog, setShowConflictDialog] = useState(false);
-  const [conflicts, setConflicts] = useState<ConflictFile[]>([]);
-  const [showCloudWarning, setShowCloudWarning] = useState(false);
-  const [cloudProviders] = useState<string[]>([]);
   const [showDefenderInfo, setShowDefenderInfo] = useState(false);
-  const [showUpdateNotice, setShowUpdateNotice] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState({ currentVersion: '', newVersion: '', downloadUrl: '' });
   const [showFirstRunGuide, setShowFirstRunGuide] = useState(false);
   const [showHelpPanel, setShowHelpPanel] = useState(false);
 
@@ -54,20 +45,6 @@ function AppInner() {
     }
   }, []);
 
-  // Check for updates on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const ver = await GetVersion();
-        // In production, compare with remote latest version
-        // For now, just store current version
-        setUpdateInfo(prev => ({ ...prev, currentVersion: ver }));
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
-
   // Heartbeat during migration — uses the useHeartbeat hook from ErrorBoundary
   const handleDead = useCallback(() => {
     setError('后端进程失去响应');
@@ -75,16 +52,18 @@ function AppInner() {
   }, []);
   useHeartbeat({ enabled: state === 'migrating', onDead: handleDead });
 
-  const loadData = useCallback(async () => {
-    setState('checking');
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setState('checking');
     try {
       const [f, d] = await Promise.all([GetFolders(), GetDisks()]);
       setFolders(f);
       setDisks(d);
-      setState('idle');
+      if (!opts?.silent) setState('idle');
     } catch {
-      setError('无法加载数据，请检查后端服务');
-      setState('failed');
+      if (!opts?.silent) {
+        setError('无法加载数据，请检查后端服务');
+        setState('failed');
+      }
     }
   }, []);
 
@@ -112,6 +91,7 @@ function AppInner() {
   };
 
   const handleConfirm = async () => {
+    preMigrationFoldersRef.current = folders;
     setState('migrating');
     try {
       await StartMigration(selectedDisk);
@@ -123,12 +103,9 @@ function AppInner() {
 
   const handleCancel = async () => {
     const confirmed = window.confirm(
-      '确定要取消迁移吗？
-
-' +
-      '跨卷迁移中途取消可能导致部分文件已复制、部分未复制的不一致状态。
-' +
-      '建议等待迁移完成后再回滚。'
+      '确定要取消迁移吗？\n' +
+      '取消后，已移动的文件会自动恢复到原位置，请等待恢复完成。\n' +
+      '跨卷迁移的取消和恢复可能需要一些时间。\n'
     );
     if (!confirmed) return;
 
@@ -144,6 +121,9 @@ function AppInner() {
   // Ref to access latest progress in event callbacks without re-subscribing.
   const progressRef = useRef(progress);
   progressRef.current = progress;
+  // Snapshot of folder state when this migration run started, used to report
+  // how much space THIS run freed (excluding folders migrated in earlier runs).
+  const preMigrationFoldersRef = useRef<FolderInfo[]>([]);
 
   // ── Wails Event Subscriptions (real progress + completion) ──
   useEffect(() => {
@@ -155,12 +135,37 @@ function AppInner() {
 
     const unsubDone = onMigrationDone((event) => {
       if (event.success) {
-        setFolders(prev => prev.map(f => ({ ...f, status: 'migrated' as const, targetPath: f.sourcePath.replace('C:', selectedDisk) })));
-        setFreedBytes(progressRef.current.totalBytes);
-        setState('completed');
+        (async () => {
+          try {
+            const [f, d] = await Promise.all([GetFolders(), GetDisks()]);
+            setFolders(f);
+            setDisks(d);
+            setFreedBytes(
+              preMigrationFoldersRef.current
+                .filter(fi => fi.status !== 'migrated' && fi.sizeBytes > 0)
+                .reduce((sum, fi) => sum + fi.sizeBytes, 0),
+            );
+          } finally {
+            setState('completed');
+          }
+        })();
       } else {
-        setError(`迁移失败：${event.error || '未知错误'}`);
-        setState('failed');
+        if (event.code === 'CANCELLED') {
+          setError('迁移已取消，已移动的文件已恢复到原位置');
+          setState('idle');
+          // Refresh state so the UI reflects the restored folders.
+          loadData({ silent: true });
+        } else {
+          setError(
+            `迁移失败：${event.error || '未知错误'}${
+              event.action ? `（${event.action}）` : ''
+            }`,
+          );
+          setState('failed');
+          // Refresh folder state so folders that completed before the failure
+          // expose rollback actions.
+          GetFolders().then(setFolders).catch(() => {});
+        }
       }
     });
 
@@ -168,7 +173,7 @@ function AppInner() {
       unsubProgress();
       unsubDone();
     };
-  }, [state, selectedDisk]);
+  }, [state, selectedDisk, loadData]);
 
   const handleRollback = async (folderName: string) => {
     try {
@@ -333,54 +338,8 @@ function AppInner() {
         />
       )}
 
-      {showConflictDialog && (
-        <ConflictDialog
-          conflicts={conflicts}
-          onSkip={() => {
-            setShowConflictDialog(false);
-            // Continue migration, skipping conflicts
-            setState('migrating');
-            StartMigration(selectedDisk, 'skip').catch((err) => {
-              const msg = err instanceof Error ? err.message : '未知错误';
-              setError(`迁移失败：${msg}`);
-              setState('failed');
-            });
-          }}
-          onOverwrite={() => {
-            setShowConflictDialog(false);
-            // Continue migration, overwriting conflicts
-            setState('migrating');
-            StartMigration(selectedDisk, 'overwrite').catch((err) => {
-              const msg = err instanceof Error ? err.message : '未知错误';
-              setError(`迁移失败：${msg}`);
-              setState('failed');
-            });
-          }}
-          onCancel={() => {
-            setShowConflictDialog(false);
-            setState('idle');
-          }}
-        />
-      )}
-
-      {showCloudWarning && (
-        <CloudWarning
-          providers={cloudProviders}
-          onClose={() => setShowCloudWarning(false)}
-        />
-      )}
-
       {showDefenderInfo && (
         <DefenderInfo onClose={() => setShowDefenderInfo(false)} />
-      )}
-
-      {showUpdateNotice && (
-        <UpdateNotice
-          currentVersion={updateInfo.currentVersion}
-          newVersion={updateInfo.newVersion}
-          downloadUrl={updateInfo.downloadUrl}
-          onLater={() => setShowUpdateNotice(false)}
-        />
       )}
 
       {showFirstRunGuide && (

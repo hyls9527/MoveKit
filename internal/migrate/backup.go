@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 // backupsDir returns the path to %APPDATA%\MoveKit\backups and ensures it exists.
@@ -85,24 +84,4 @@ func LoadAllBackups() ([]BackupRecord, error) {
 func DeleteBackup(folder string) error {
 	path := backupPathFor(folder)
 	return os.Remove(path)
-}
-
-// CleanupExpiredBackups removes backup records older than 30 days.
-// Returns the number of records cleaned up.
-func CleanupExpiredBackups() (int, error) {
-	records, err := LoadAllBackups()
-	if err != nil {
-		return 0, err
-	}
-
-	cleaned := 0
-	cutoff := time.Now().Add(-30 * 24 * time.Hour)
-	for _, rec := range records {
-		if rec.CreatedAt.Before(cutoff) {
-			if err := DeleteBackup(rec.RegValueName); err == nil {
-				cleaned++
-			}
-		}
-	}
-	return cleaned, nil
 }

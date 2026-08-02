@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -221,4 +222,71 @@ func DeleteJunction(linkPath string) error {
 	}
 
 	return nil
+}
+
+// ResolveTarget returns the target path of a junction (mount point) by
+// reading its reparse point data with FSCTL_GET_REPARSE_POINT. It returns an
+// error if path does not exist or is not a junction. Unlike
+// filepath.EvalSymlinks, this works even when the target directory cannot be
+// opened for path resolution (e.g. restricted ACLs).
+func ResolveTarget(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve link path: %w", err)
+	}
+
+	h, err := openReparse(absPath, syscall.GENERIC_READ, syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE|syscall.FILE_SHARE_DELETE)
+	if err != nil {
+		return "", fmt.Errorf("open link: %w", err)
+	}
+	defer closeHandle(h)
+
+	buf := make([]byte, MAX_REPARSE_SIZE)
+	var bytesReturned uint32
+	r1, _, e := procDeviceIoCtrl.Call(
+		uintptr(h),
+		uintptr(FSCTL_GET_REPARSE_POINT),
+		0, 0,
+		uintptr(unsafe.Pointer(&buf[0])),
+		uintptr(len(buf)),
+		uintptr(unsafe.Pointer(&bytesReturned)),
+		0,
+	)
+	if r1 == 0 {
+		return "", fmt.Errorf("DeviceIoControl(FSCTL_GET_REPARSE_POINT): %w", e)
+	}
+
+	return parseMountPointTarget(buf)
+}
+
+// parseMountPointTarget extracts the target path from a REPARSE_DATA_BUFFER
+// returned by FSCTL_GET_REPARSE_POINT. It validates the buffer layout so a
+// corrupted reparse point cannot cause an out-of-bounds read.
+func parseMountPointTarget(buf []byte) (string, error) {
+	if len(buf) < 16 {
+		return "", fmt.Errorf("reparse buffer too short")
+	}
+
+	tag := binary.LittleEndian.Uint32(buf[0:4])
+	if tag != IO_REPARSE_TAG_MOUNT_POINT {
+		return "", fmt.Errorf("path is not a mount point (reparse tag 0x%x)", tag)
+	}
+
+	// MountPointReparseBuffer layout:
+	// ReparseTag(4), ReparseDataLength(2), Reserved(2),
+	// SubstituteNameOffset(2), SubstituteNameLength(2),
+	// PrintNameOffset(2), PrintNameLength(2), PathBuffer(...).
+	// PathBuffer starts at byte 16 of the full buffer.
+	subOffset := int(binary.LittleEndian.Uint16(buf[8:10]))
+	subLen := int(binary.LittleEndian.Uint16(buf[10:12]))
+	if 16+subOffset+subLen > len(buf) {
+		return "", fmt.Errorf("invalid substitute name length in reparse buffer")
+	}
+
+	subData := buf[16+subOffset : 16+subOffset+subLen]
+	sub := syscall.UTF16ToString(unsafe.Slice((*uint16)(unsafe.Pointer(&subData[0])), subLen/2))
+	// Substitute names use the \??\ (or \\?\ ) device-path prefix.
+	sub = strings.TrimPrefix(sub, `\??\`)
+	sub = strings.TrimPrefix(sub, `\\?\`)
+	return sub, nil
 }

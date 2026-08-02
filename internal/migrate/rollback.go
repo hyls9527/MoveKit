@@ -53,6 +53,34 @@ func Rollback(folderName string, onProgress ...RollbackProgressCallback) error {
 	}
 
 	// 3. Move files back from new location to original.
+	// Idempotent retry: if a previous rollback already moved the files back
+	// but failed while updating the registry, NewPath no longer exists while
+	// OriginalPath does. In that case skip the move and finish the registry
+	// restore instead of failing again.
+	newPathExists := true
+	if _, err := os.Stat(rec.NewPath); err != nil {
+		if os.IsNotExist(err) {
+			newPathExists = false
+		} else {
+			return &MoveKitError{
+				Code:    ErrCodePermissionDenied,
+				Message: "无法访问回滚源路径",
+				Detail:  err.Error(),
+				Action:  "检查目标盘是否在线、路径是否可访问后重试",
+			}
+		}
+	}
+	if !newPathExists {
+		if _, err := os.Stat(rec.OriginalPath); err != nil {
+			return &MoveKitError{
+				Code:    ErrCodeFileLocked,
+				Message: "回滚源与目标文件均不存在，无法回滚",
+				Detail:  fmt.Sprintf("NewPath=%s, OriginalPath=%s", rec.NewPath, rec.OriginalPath),
+				Action:  "请确认数据未被手动删除",
+			}
+		}
+	}
+
 	// Ensure the parent of the original path exists.
 	parentDir := filepath.Dir(rec.OriginalPath)
 	if err := os.MkdirAll(parentDir, 0755); err != nil {
@@ -64,31 +92,30 @@ func Rollback(folderName string, onProgress ...RollbackProgressCallback) error {
 		}
 	}
 
-	// Detect cross-volume: if source and target are on different drives, use copy+delete
-	if Sys.Volume.IsCrossVolume(rec.NewPath, rec.OriginalPath) {
-		// Cross-volume rollback: copy each file then delete source
-		if progress != nil {
-			progress("moving_files", 0, 0)
-		}
-		if err := rollbackCrossVolume(rec.NewPath, rec.OriginalPath, progress); err != nil {
-			return err
-		}
-	} else {
-		// Same-volume: atomic rename
-		if err := os.Rename(rec.NewPath, rec.OriginalPath); err != nil {
-			return &MoveKitError{
-				Code:    ErrCodeFileLocked,
-				Message: "回滚移动文件失败",
-				Detail:  err.Error(),
-				Action:  "关闭正在使用目标文件夹的程序后重试",
+	if newPathExists {
+		// Detect cross-volume: if source and target are on different drives, use copy+delete
+		if Sys.Volume.IsCrossVolume(rec.NewPath, rec.OriginalPath) {
+			// Cross-volume rollback: copy each file then delete source
+			if progress != nil {
+				progress("moving_files", 0, 0)
+			}
+			if err := rollbackCrossVolume(rec.NewPath, rec.OriginalPath, progress); err != nil {
+				return err
+			}
+		} else {
+			// Same-volume: atomic rename
+			if err := os.Rename(rec.NewPath, rec.OriginalPath); err != nil {
+				return &MoveKitError{
+					Code:    ErrCodeFileLocked,
+					Message: "回滚移动文件失败",
+					Detail:  err.Error(),
+					Action:  "关闭正在使用目标文件夹的程序后重试",
+				}
 			}
 		}
 	}
 
-	// 4. Restore registry values (with atomicity protection).
-	// Backup current values first.
-	oldUserShell, _ := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, rec.RegValueName)
-
+	// 4. Restore registry values.
 	// Write the original path back to User Shell Folders.
 	if err := Sys.Registry.WriteExpandString(sys.UserShellFoldersKey, rec.RegValueName, rec.OriginalPath); err != nil {
 		return &MoveKitError{
@@ -102,15 +129,11 @@ func Rollback(folderName string, onProgress ...RollbackProgressCallback) error {
 	// Write the original path back to Shell Folders.
 	absOriginal, _ := filepath.Abs(rec.OriginalPath)
 	if err := Sys.Registry.WriteString(sys.ShellFoldersKey, rec.RegValueName, absOriginal); err != nil {
-		// Rollback the first write
-		if oldUserShell != "" {
-			Sys.Registry.WriteExpandString(sys.UserShellFoldersKey, rec.RegValueName, oldUserShell)
-		}
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
-			Message: "回滚时恢复 Shell Folders 注册表失败（已回滚 User Shell Folders）",
+			Message: "回滚时恢复 Shell Folders 注册表失败",
 			Detail:  err.Error(),
-			Action:  "以管理员身份运行并手动恢复注册表",
+			Action:  "User Shell Folders 已恢复原路径；请以管理员身份运行并手动恢复 Shell Folders",
 		}
 	}
 

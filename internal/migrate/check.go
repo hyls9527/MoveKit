@@ -4,22 +4,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"unicode"
+	"strings"
 )
 
 // DirSize returns the total size in bytes of all files under dir.
 func DirSize(dir string) (int64, error) {
-	var size int64
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	size, _, err := DirStats(dir)
+	return size, err
+}
+
+// DirStats returns the total size in bytes and the number of files under dir.
+func DirStats(dir string) (size int64, files int, err error) {
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !info.IsDir() {
 			size += info.Size()
+			files++
 		}
 		return nil
 	})
-	return size, err
+	return size, files, err
 }
 
 // PreCheck validates that a migration can proceed from sourcePath to the target drive.
@@ -76,7 +82,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 		driveLetter = driveLetter[:1]
 	}
 	// Validate drive letter is A-Z.
-	if len(driveLetter) != 1 || !unicode.IsLetter(rune(driveLetter[0])) {
+	if len(driveLetter) != 1 || !isASCIIDriveLetter(driveLetter[0]) {
 		return &MoveKitError{
 			Code:    ErrCodeFileSystemNotNTFS,
 			Message: "Invalid drive letter",
@@ -84,7 +90,7 @@ func PreCheck(sourcePath, targetDrive string) *MoveKitError {
 			Action:  "Select a valid drive letter (e.g. D, E, F)",
 		}
 	}
-	driveLetter = string(unicode.ToUpper(rune(driveLetter[0])))
+	driveLetter = strings.ToUpper(driveLetter)
 	volInfo, err := Sys.Volume.GetVolumeInfo(driveLetter)
 	if err != nil {
 		return &MoveKitError{
@@ -211,8 +217,8 @@ func checkControlledFolderAccess() *MoveKitError {
 func checkWindowsUpdate() *MoveKitError {
 	// Check the standard pending-reboot registry key.
 	keyPath := `SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update`
-	_, err := Sys.Registry.ReadIntegerLM(keyPath, "RebootRequired")
-	if err == nil {
+	val, err := Sys.Registry.ReadIntegerLM(keyPath, "RebootRequired")
+	if err == nil && val != 0 {
 		return &MoveKitError{
 			Code:    ErrCodeWindowsUpdate,
 			Message: "Windows 更新可能正在安装",
@@ -221,6 +227,11 @@ func checkWindowsUpdate() *MoveKitError {
 		}
 	}
 	return nil
+}
+
+// isASCIIDriveLetter reports whether c is an ASCII letter A-Z/a-z.
+func isASCIIDriveLetter(c byte) bool {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 }
 
 // checkBattery warns if the system is running on battery power, since

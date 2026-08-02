@@ -39,7 +39,7 @@ func ReadExpandString(keyPath, valueName string) (string, error) {
 // WriteExpandString writes a REG_EXPAND_SZ value to the given registry key path
 // under HKEY_CURRENT_USER. The value may contain %ENVVAR% references.
 func WriteExpandString(keyPath, valueName, value string) error {
-	k, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.SET_VALUE)
+	k, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.SET_VALUE|registry.CREATE_SUB_KEY)
 	if err != nil {
 		return fmt.Errorf("open key HKCU\\%s: %w", keyPath, err)
 	}
@@ -54,7 +54,7 @@ func WriteExpandString(keyPath, valueName, value string) error {
 // WriteString writes a REG_SZ value to the given registry key path
 // under HKEY_CURRENT_USER.
 func WriteString(keyPath, valueName, value string) error {
-	k, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.SET_VALUE)
+	k, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.SET_VALUE|registry.CREATE_SUB_KEY)
 	if err != nil {
 		return fmt.Errorf("open key HKCU\\%s: %w", keyPath, err)
 	}
@@ -71,7 +71,7 @@ func WriteString(keyPath, valueName, value string) error {
 func ReadInteger(keyPath, valueName string) (uint64, error) {
 	k, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.READ)
 	if err != nil {
-		return 0, fmt.Errorf("open key HKCU\\\\%s: %w", keyPath, err)
+		return 0, fmt.Errorf("open key HKCU\\%s: %w", keyPath, err)
 	}
 	defer k.Close()
 

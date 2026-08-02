@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/movekit/movekit/internal/migrate"
 )
@@ -55,6 +56,9 @@ func TestFormatDuration(t *testing.T) {
 func TestPathsEqual(t *testing.T) {
 	if !pathsEqual(`C:\Users\Test`, `C:\Users\Test`) {
 		t.Error("pathsEqual should be true for identical paths")
+	}
+	if !pathsEqual(`C:\Users\Test`, `c:\users\test`) {
+		t.Error("pathsEqual should be case-insensitive on Windows")
 	}
 	if pathsEqual(`C:\Users\Test`, `C:\Users\Test2`) {
 		t.Error("pathsEqual should be false for different paths")
@@ -114,6 +118,26 @@ func TestGetFirstRunFlag_NoConfig(t *testing.T) {
 	}
 }
 
+func TestGetFirstRunFlag_MalformedConfig(t *testing.T) {
+	orig := os.Getenv("APPDATA")
+	tmpDir := t.TempDir()
+	os.Setenv("APPDATA", tmpDir)
+	defer os.Setenv("APPDATA", orig)
+
+	dir := filepath.Join(tmpDir, "MoveKit")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte("{not-json"), 0644); err != nil {
+		t.Fatalf("write malformed config: %v", err)
+	}
+
+	app := NewApp()
+	if !app.GetFirstRunFlag() {
+		t.Error("malformed config should be treated as first run")
+	}
+}
+
 func TestSetFirstRunFlag_RoundTrip(t *testing.T) {
 	orig := os.Getenv("APPDATA")
 	tmpDir := t.TempDir()
@@ -152,6 +176,24 @@ func TestHealthCheck(t *testing.T) {
 	app := NewApp()
 	if !app.HealthCheck() {
 		t.Error("HealthCheck should return true")
+	}
+}
+
+func TestProgressThrottle(t *testing.T) {
+	base := time.Now()
+	th := &progressThrottle{interval: 150 * time.Millisecond}
+
+	if !th.allow("moving", base) {
+		t.Error("first event should be allowed")
+	}
+	if th.allow("moving", base.Add(50*time.Millisecond)) {
+		t.Error("event inside the interval should be dropped")
+	}
+	if !th.allow("moving", base.Add(200*time.Millisecond)) {
+		t.Error("event after the interval should be allowed")
+	}
+	if !th.allow("complete", base.Add(1*time.Millisecond)) {
+		t.Error("phase transitions must always pass through")
 	}
 }
 

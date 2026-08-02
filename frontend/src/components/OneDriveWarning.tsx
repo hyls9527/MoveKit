@@ -1,9 +1,19 @@
+import { useEffect } from 'react';
+
 interface OneDriveWarningProps {
   folders: string[];
   onClose: () => void;
 }
 
 export default function OneDriveWarning({ folders, onClose }: OneDriveWarningProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-card rounded-fluent shadow-fluent-lg border border-border max-w-md w-full mx-4 overflow-hidden">

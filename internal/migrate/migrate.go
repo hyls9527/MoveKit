@@ -3,11 +3,14 @@ package migrate
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/movekit/movekit/internal/folders"
 	sys "github.com/movekit/movekit/internal/syscall"
 )
 
@@ -17,8 +20,8 @@ type ProgressCallback func(folder, phase string, filesMoved, totalFiles int, byt
 // CleanupTempJunctions removes any leftover .movekit_tmp junctions from previous failed migrations.
 // Call this on application startup.
 func CleanupTempJunctions() {
-	for _, f := range []string{"Desktop", "Personal", "My Pictures", "My Music", "{374DE290-123F-4565-9164-39C4925E467B}"} {
-		rawPath, err := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, f)
+	for _, f := range folders.AllFolders {
+		rawPath, err := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, f.RegValueName)
 		if err != nil {
 			continue
 		}
@@ -31,6 +34,11 @@ func CleanupTempJunctions() {
 		}
 	}
 }
+
+// testTargetRoot redirects the computed target path during unit tests so the
+// full Migrate pipeline can run against temp directories. Production code
+// never sets this variable.
+var testTargetRoot string
 
 // ConflictMode determines how file conflicts are handled during migration.
 type ConflictMode string
@@ -103,7 +111,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	if len(driveLetter) >= 2 && driveLetter[1] == ':' {
 		driveLetter = driveLetter[:1]
 	}
-	if len(driveLetter) != 1 || driveLetter[0] < 'A' || driveLetter[0] > 'Z' {
+	if len(driveLetter) != 1 || !isASCIIDriveLetter(driveLetter[0]) {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
 			Message: "无效的目标盘符",
@@ -111,9 +119,29 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 			Action:  "请选择 A-Z 之间的盘符",
 		}
 	}
+	driveLetter = strings.ToUpper(driveLetter)
 	folderName := filepath.Base(actualSource)
 	targetPath := filepath.Join(driveLetter+":\\", folderName)
+	if testTargetRoot != "" {
+		targetPath = filepath.Join(testTargetRoot, folderName)
+	}
 	log.Info("Target path: %s", maskPath(targetPath))
+
+	// 2b. Already-migrated no-op: when the real folder location is exactly the
+	// target, there is nothing to move (the source path is a junction pointing
+	// here, or the folder already lives on the target drive). Returning early
+	// keeps batch re-runs and retries after partial failures safe. An existing
+	// backup record is left untouched so rollback still knows the original
+	// location; a self-referencing record would make rollback impossible.
+	if strings.EqualFold(filepath.Clean(targetPath), filepath.Clean(actualSource)) {
+		log.Info("Folder already resides at %s, migration is a no-op", maskPath(targetPath))
+		if _, err := LoadBackup(regValueName); err != nil {
+			// No backup record exists (e.g. the folder was moved by other
+			// means); there is nothing meaningful to record for rollback.
+			log.Info("No backup record for %s; nothing to do", regValueName)
+		}
+		return nil
+	}
 
 	// Check for junction hijack at target.
 	if hijackErr := CheckJunctionHijack(targetPath); hijackErr != nil {
@@ -122,9 +150,9 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 
 	// 3. PreCheck.
 	if preErr := PreCheck(actualSource, driveLetter); preErr != nil {
-		if preErr.Code == ErrCodeSecuritySoftware {
-			log.Warn("检测到安全软件: %s，继续迁移", preErr.Warning)
-			// Non-blocking: proceed with migration despite AV detection
+		if preErr.Code == ErrCodeSecuritySoftware || preErr.Code == ErrCodeBatteryWarning {
+			log.Warn("非阻塞警告 %s: %s，继续迁移", preErr.Code, preErr.Warning)
+			// Non-blocking: proceed with migration despite AV/battery warning
 		} else {
 			log.Error("PreCheck failed: %s — %s", preErr.Code, preErr.Detail)
 			return preErr
@@ -134,17 +162,21 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	// Check for file conflicts before moving.
 	// Skip if source is already a junction (re-migration): files are already at target.
 	if !Sys.Junction.IsJunction(sourcePath) {
-		conflicts, err := DetectConflicts(actualSource, targetPath)
-		if err != nil {
-			log.Warn("Conflict detection failed: %v", err)
-		}
-		if len(conflicts) > 0 {
-			log.Error("Found %d file conflicts, blocking migration", len(conflicts))
-			return &MoveKitError{
-				Code:    ErrCodeTargetExists,
-				Message: fmt.Sprintf("目标路径存在 %d 个同名文件", len(conflicts)),
-				Detail:  fmt.Sprintf("冲突文件数: %d", len(conflicts)),
-				Action:  "请先手动删除目标路径中的同名文件，或选择其他盘符",
+		if _, statErr := os.Stat(targetPath); statErr == nil {
+			// PreCheck already rejects an existing target directory, so this
+			// only runs in the TOCTOU window (target created meanwhile).
+			conflicts, err := DetectConflicts(actualSource, targetPath)
+			if err != nil {
+				log.Warn("Conflict detection failed: %v", err)
+			}
+			if len(conflicts) > 0 {
+				log.Error("Found %d file conflicts, blocking migration", len(conflicts))
+				return &MoveKitError{
+					Code:    ErrCodeTargetExists,
+					Message: fmt.Sprintf("目标路径存在 %d 个同名文件", len(conflicts)),
+					Detail:  fmt.Sprintf("冲突文件数: %d", len(conflicts)),
+					Action:  "请先手动删除目标路径中的同名文件，或选择其他盘符",
+				}
 			}
 		}
 	} else {
@@ -173,17 +205,21 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	}
 
 	// 5. Move files.
-	// If the file move succeeds but a later step (junction/registry) fails,
-	// we must move the files back to avoid leaving them orphaned at the target.
-	var filesMovedOk bool
+	// If any step fails after the move begins, restore the original state:
+	// remove a newly-created junction first, then merge any files that were
+	// already copied back into the source directory.
+	moveStarted := false
 	defer func() {
-		if filesMovedOk && retErr != nil {
-			log.Error("Post-move step failed (%v), rolling back file move from %s to %s",
-				retErr, maskPath(targetPath), maskPath(actualSource))
-			if rbErr := rollbackMoveFiles(targetPath, actualSource); rbErr != nil {
-				log.Error("CRITICAL: rollback of file move also failed: %v", rbErr)
+		if moveStarted && retErr != nil {
+			log.Error("Migration step failed after files were moved (%v), restoring original state", retErr)
+			if rbErr := restoreAfterFailedMove(sourcePath, actualSource, targetPath); rbErr != nil {
+				log.Error("CRITICAL: restore after failed move also failed: %v", rbErr)
 			} else {
-				log.Info("File move rollback succeeded")
+				log.Info("Files restored after failed migration")
+				backup.Status = "rolled_back"
+				if err := saveBackup(backupPath, backup); err != nil {
+					log.Warn("Failed to mark backup as rolled_back: %v", err)
+				}
 			}
 		}
 	}()
@@ -191,6 +227,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	if onProgress != nil {
 		onProgress(regValueName, "moving", 0, 0, 0, 0)
 	}
+	moveStarted = true
 
 	log.Info("Moving files from %s to %s", maskPath(actualSource), maskPath(targetPath))
 	if Sys.Volume.IsCrossVolume(actualSource, targetPath) {
@@ -213,7 +250,6 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 		}
 	}
 	log.Info("Files moved successfully")
-	filesMovedOk = true
 
 	// 6. Create junction at original location (atomic-safe strategy).
 	junctionCreated := false
@@ -298,9 +334,11 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	// Backup old values first.
 	oldUserShell, _ := Sys.Registry.ReadExpandString(sys.UserShellFoldersKey, regValueName)
 
-	// User Shell Folders: REG_SZ (fully expanded path, no env vars)
+	// User Shell Folders: REG_EXPAND_SZ to preserve the value type this key
+	// conventionally uses (the written path may contain no env vars, which is
+	// fine for EXPAND_SZ).
 	regValue := fmt.Sprintf("%s\\%s", driveLetter+":", folderName)
-	if regErr := Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, regValue); regErr != nil {
+	if regErr := Sys.Registry.WriteExpandString(sys.UserShellFoldersKey, regValueName, regValue); regErr != nil {
 		log.Error("Failed to update User Shell Folders: %v", regErr)
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
@@ -380,26 +418,118 @@ func saveBackup(path string, record BackupRecord) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
-// resolveJunctionTarget reads the reparse point to find where a junction points to.
-// Falls back to checking if the directory is accessible (non-junction case).
+// resolveJunctionTarget reads the reparse point to find where a junction
+// points to.
 func resolveJunctionTarget(junctionPath string) (string, error) {
-	resolved, err := filepath.EvalSymlinks(junctionPath)
-	if err != nil {
-		return "", fmt.Errorf("resolve junction %s: %w", junctionPath, err)
-	}
-	return resolved, nil
+	return Sys.Junction.ResolveTarget(junctionPath)
 }
 
-// rollbackMoveFiles moves files from src back to dst when a post-move step fails.
-func rollbackMoveFiles(src, dst string) error {
+// restoreAfterFailedMove returns the filesystem to its pre-move state after a
+// migration step failed. It first removes a junction that was created at the
+// original path (only when it points to our target), then merges any files
+// left at the target back into the source directory. Source files that never
+// left are authoritative: their partial/duplicate copies at the target are
+// discarded instead of overwriting the original.
+func restoreAfterFailedMove(sourcePath, actualSource, targetPath string) error {
+	if strings.EqualFold(filepath.Clean(targetPath), filepath.Clean(actualSource)) {
+		return nil
+	}
+
+	// 1. Remove a junction created at the original path, but only if it points
+	// to our target. Never delete a pre-existing junction pointing elsewhere.
+	if Sys.Junction.IsJunction(sourcePath) {
+		resolved, err := resolveJunctionTarget(sourcePath)
+		if err != nil {
+			return fmt.Errorf("resolve junction at %s before restore: %w", sourcePath, err)
+		}
+		if !strings.EqualFold(resolved, targetPath) {
+			return fmt.Errorf("junction at %s points to %s, expected %s; refusing to delete", sourcePath, resolved, targetPath)
+		}
+		if err := Sys.Junction.DeleteJunction(sourcePath); err != nil {
+			return fmt.Errorf("delete junction at %s before restore: %w", sourcePath, err)
+		}
+		_ = os.Remove(sourcePath) // remove the empty directory that hosted the junction
+	}
+
+	// 2. Nothing was moved if the target never appeared (e.g. atomic
+	// same-volume rename failed before creating it).
+	if _, err := os.Stat(targetPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	// 3. Merge the target contents back into the source directory.
+	if err := mergeDirBack(targetPath, actualSource); err != nil {
+		return err
+	}
+	return os.RemoveAll(targetPath)
+}
+
+// mergeDirBack moves every file under src into dst. If the same relative file
+// already exists at dst, the destination copy wins and the src copy is
+// discarded (the source file never left, so it is authoritative).
+func mergeDirBack(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		dstPath := filepath.Join(dst, relPath)
+
+		if d.IsDir() {
+			return os.MkdirAll(dstPath, 0755)
+		}
+
+		if _, err := os.Stat(dstPath); err == nil {
+			// The source file still exists, so the copy at the target is a
+			// duplicate (or a partial copy). Source wins.
+			return os.Remove(path)
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+
+		if err := copyFilePlain(path, dstPath); err != nil {
+			return fmt.Errorf("restore copy %s: %w", relPath, err)
+		}
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("restore remove %s: %w", relPath, err)
+		}
+		return nil
+	})
+}
+
+// copyFilePlain copies a single file without ACL preservation. It is used
+// only during restore-after-failure, where the priority is returning data to
+// its original location even if the ACL-aware copy path is itself broken.
+func copyFilePlain(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		return fmt.Errorf("rollback: create parent dir %s: %w", filepath.Dir(dst), err)
+		return err
 	}
-	if Sys.Volume.IsCrossVolume(src, dst) {
-		return rollbackCrossVolume(src, dst, nil)
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
 	}
-	return os.Rename(src, dst)
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
 }

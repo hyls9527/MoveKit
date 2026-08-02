@@ -33,6 +33,7 @@ type JunctionOps interface {
 	IsJunction(path string) bool
 	CreateJunction(linkPath, targetPath string) error
 	DeleteJunction(linkPath string) error
+	ResolveTarget(path string) (string, error)
 }
 
 // ShellNotifier abstracts Windows shell change notifications via SHChangeNotify.

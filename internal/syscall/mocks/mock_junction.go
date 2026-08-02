@@ -46,3 +46,14 @@ func (mr *MockJunctionOpsRecorder) DeleteJunction(linkPath interface{}) *gomock.
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJunction", nil, linkPath)
 }
+func (m *MockJunctionOps) ResolveTarget(path string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveTarget", path)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+func (mr *MockJunctionOpsRecorder) ResolveTarget(path interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveTarget", nil, path)
+}

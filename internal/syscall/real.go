@@ -77,6 +77,10 @@ func (r *RealImpl) DeleteJunction(linkPath string) error {
 	return DeleteJunction(linkPath)
 }
 
+func (r *RealImpl) ResolveTarget(path string) (string, error) {
+	return ResolveTarget(path)
+}
+
 // --- ShellNotifier ---
 
 func (r *RealImpl) NotifyFolderRenamed(oldPath, newPath string) {

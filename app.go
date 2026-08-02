@@ -20,28 +20,60 @@ import (
 // App is the main Wails application struct. All exported methods are
 // automatically bound to the frontend via Wails bindings.
 type App struct {
-	ctx       context.Context
-	mu        sync.Mutex
-	migrating bool
-	sizeCache sync.Map // path -> int64, caches dirSize results
+	ctx        context.Context
+	mu         sync.Mutex
+	migrating  bool
+	statsCache sync.Map // path -> dirStats, caches DirStats results
+}
+
+type dirStats struct {
+	size  int64
+	files int
+}
+
+// cachedDirStats returns directory size and file count with caching to avoid
+// repeated walks.
+func (a *App) cachedDirStats(path string) (dirStats, error) {
+	if cached, ok := a.statsCache.Load(path); ok {
+		return cached.(dirStats), nil
+	}
+	size, files, err := migrate.DirStats(path)
+	if err != nil {
+		return dirStats{}, err
+	}
+	ds := dirStats{size: size, files: files}
+	a.statsCache.Store(path, ds)
+	return ds, nil
 }
 
 // cachedDirSize returns directory size with caching to avoid repeated walks.
 func (a *App) cachedDirSize(path string) (int64, error) {
-	if cached, ok := a.sizeCache.Load(path); ok {
-		return cached.(int64), nil
-	}
-	size, err := migrate.DirSize(path)
-	if err != nil {
-		return 0, err
-	}
-	a.sizeCache.Store(path, size)
-	return size, nil
+	ds, err := a.cachedDirStats(path)
+	return ds.size, err
 }
 
 // clearSizeCache clears the size cache (call after migration completes).
 func (a *App) clearSizeCache() {
-	a.sizeCache = sync.Map{}
+	a.statsCache = sync.Map{}
+}
+
+// progressThrottle limits progress events to one per interval, except phase
+// transitions ("starting"/"complete") which always pass through.
+type progressThrottle struct {
+	interval time.Duration
+	last     time.Time
+}
+
+func (t *progressThrottle) allow(phase string, now time.Time) bool {
+	if phase == "starting" || phase == "complete" {
+		t.last = now
+		return true
+	}
+	if !t.last.IsZero() && now.Sub(t.last) < t.interval {
+		return false
+	}
+	t.last = now
+	return true
 }
 
 // NewApp creates a new App instance.
@@ -98,9 +130,10 @@ func (a *App) GetFolders() []FolderInfo {
 		fi.SourcePath = expanded
 		fi.TargetPath = expanded
 
-		// Calculate folder size (lazy — may take a moment for large folders).
-		if size, err := a.cachedDirSize(expanded); err == nil {
-			fi.SizeBytes = size
+		// Calculate folder size and file count (lazy — may take a moment for large folders).
+		if stats, err := a.cachedDirStats(expanded); err == nil {
+			fi.SizeBytes = stats.size
+			fi.FileCount = stats.files
 		} else {
 			fi.SizeBytes = -1 // sentinel: directory size could not be calculated
 		}
@@ -109,7 +142,7 @@ func (a *App) GetFolders() []FolderInfo {
 		if sys.IsJunction(expanded) {
 			fi.Status = "migrated"
 			// Resolve the junction target as the real location.
-			resolved, err := filepath.EvalSymlinks(expanded)
+			resolved, err := sys.ResolveTarget(expanded)
 			if err == nil {
 				fi.TargetPath = resolved
 			}
@@ -145,7 +178,7 @@ func (a *App) GetDisks() []DiskInfo {
 		}
 		result = append(result, DiskInfo{
 			Drive:        drive + ":",
-			Label:        volInfo.FileSystem, // Label comes from volume name; FileSystem as proxy
+			Label:        volInfo.VolumeName,
 			TotalBytes:   totalBytes,
 			FreeBytes:    freeBytes,
 			IsFixedDrive: volInfo.IsFixedDrive,
@@ -321,7 +354,11 @@ func (a *App) StartMigration(targetDrive string, conflictMode string) {
 			// and emits events.
 			folderName := f.Name
 			folderIdx := i
+			throttle := &progressThrottle{interval: 150 * time.Millisecond}
 			onProgress := func(folder, phase string, filesMoved, totalFiles int, bytesMoved, totalBytes int64) {
+				if !throttle.allow(phase, time.Now()) {
+					return
+				}
 				percent := 0
 				if totalBytes > 0 {
 					percent = int(bytesMoved * 100 / totalBytes)
@@ -424,7 +461,7 @@ func (a *App) StartupIntegrityCheck() []IntegrityIssue {
 		}
 
 		// Verify the junction target is accessible.
-		resolved, err := filepath.EvalSymlinks(rec.OriginalPath)
+		resolved, err := sys.ResolveTarget(rec.OriginalPath)
 		if err != nil {
 			issues = append(issues, IntegrityIssue{
 				Type:    "junction_broken",
@@ -448,9 +485,9 @@ func (a *App) StartupIntegrityCheck() []IntegrityIssue {
 	return issues
 }
 
-// pathsEqual does a path comparison for Windows (case-sensitive after Clean).
+// pathsEqual does a case-insensitive path comparison for Windows.
 func pathsEqual(a, b string) bool {
-	return filepath.Clean(a) == filepath.Clean(b)
+	return strings.EqualFold(filepath.Clean(a), filepath.Clean(b))
 }
 
 // ---------------------------------------------------------------------------
@@ -501,7 +538,7 @@ func (a *App) SetFirstRunFlag(firstRun bool) error {
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
-	return os.WriteFile(configFilePath(), data, 0644)
+	return os.WriteFile(configFilePath(), data, 0600)
 }
 
 // ---------------------------------------------------------------------------

@@ -112,3 +112,22 @@ func TestLoadBackup_NotFound(t *testing.T) {
 		t.Error("expected error for non-existent backup, got nil")
 	}
 }
+
+func TestLoadBackup_MalformedJSON(t *testing.T) {
+	origAppData := os.Getenv("APPDATA")
+	tmpDir := t.TempDir()
+	t.Setenv("APPDATA", tmpDir)
+	defer t.Setenv("APPDATA", origAppData)
+
+	backupDir := filepath.Join(tmpDir, "MoveKit", "backups")
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(backupDir, "Desktop.json"), []byte("{broken"), 0644); err != nil {
+		t.Fatalf("write malformed backup: %v", err)
+	}
+
+	if _, err := LoadBackup("Desktop"); err == nil {
+		t.Error("malformed backup JSON should return an error")
+	}
+}

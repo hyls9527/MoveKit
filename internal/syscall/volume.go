@@ -24,6 +24,7 @@ var (
 
 // VolumeInfo holds information about a volume (drive).
 type VolumeInfo struct {
+	VolumeName   string
 	FileSystem   string
 	VolumeSN     uint32
 	IsRemovable  bool
@@ -64,6 +65,7 @@ func GetVolumeInfo(drive string) (VolumeInfo, error) {
 	driveType := GetDriveType(drive)
 
 	return VolumeInfo{
+		VolumeName:  syscall.UTF16ToString(volNameBuf[:]),
 		FileSystem:  syscall.UTF16ToString(fsNameBuf[:]),
 		VolumeSN:    serialNumber,
 		IsRemovable: driveType == DRIVE_REMOVABLE,
@@ -123,34 +125,4 @@ func driveRootPath(drive string) string {
 	}
 	// Already has trailing backslash or is a UNC path — return as-is.
 	return drive
-}
-
-// IsSSDDrive attempts to detect if a drive is an SSD.
-// Uses a heuristic: if the drive responds quickly to random reads, it's likely SSD.
-// For MVP, we check if the drive reports as non-rotational via DeviceIoControl.
-func IsSSDDrive(drive string) bool {
-	root := driveRootPath(drive)
-	rootPtr, err := syscall.UTF16PtrFromString(root)
-	if err != nil {
-		return false
-	}
-	handle, err := syscall.CreateFile(
-		rootPtr,
-		0,
-		syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE,
-		nil,
-		syscall.OPEN_EXISTING,
-		0,
-		0,
-	)
-	if err != nil {
-		return false
-	}
-	defer syscall.CloseHandle(handle)
-
-	// Try to get storage property - if the device supports it and reports
-	// non-rotational media, it's likely an SSD.
-	// This is a simplified check; full implementation would use
-	// IOCTL_STORAGE_QUERY_PROPERTY with StorageDeviceProperty.
-	return false // Conservative default - can't reliably detect without admin
 }

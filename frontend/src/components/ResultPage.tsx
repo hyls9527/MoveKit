@@ -101,7 +101,7 @@ export default function ResultPage({ success, folders, freedBytes, onRollback, o
       {success && (
         <div className="p-4 rounded-fluent bg-accent/5 border border-accent/10 text-sm text-text-secondary space-y-1">
           <p>• 已通过 NTFS Junction 链接重定向原路径，所有程序和快捷方式无需修改即可正常使用。</p>
-          <p>• 迁移前的原始数据将在目标磁盘保留 30 天，届时自动清理。</p>
+          <p>• 迁移后数据位于目标磁盘，原路径通过 Junction 指向目标；请勿手动删除目标文件夹，否则无法回滚。</p>
           <p>• 如遇问题，可随时使用"一键回滚"功能恢复。</p>
         </div>
       )}

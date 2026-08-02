@@ -15,7 +15,9 @@ interface DiskSelectorProps {
 
 export default function DiskSelector({ disks, selected, onSelect }: DiskSelectorProps) {
   // Recommend the disk with the most free space (only eligible ones)
-  const eligible = disks.filter(d => !d.isRemovable && !d.isNetwork && d.fileSystem === 'NTFS');
+  const eligible = disks.filter(
+    d => !d.isRemovable && !d.isNetwork && d.fileSystem === 'NTFS' && d.drive.toUpperCase() !== 'C:',
+  );
   const recommended = eligible.reduce<DiskInfo | null>(
     (best, d) => (!best || d.freeBytes > best.freeBytes ? d : best),
     null,
@@ -26,7 +28,11 @@ export default function DiskSelector({ disks, selected, onSelect }: DiskSelector
       <h2 className="text-lg font-semibold text-text-primary">选择目标磁盘</h2>
       <div className="space-y-2" role="radiogroup" aria-label="选择目标磁盘">
         {disks.map(disk => {
-          const disabled = disk.isRemovable || disk.isNetwork || disk.fileSystem !== 'NTFS';
+          const disabled =
+            disk.isRemovable ||
+            disk.isNetwork ||
+            disk.fileSystem !== 'NTFS' ||
+            disk.drive.toUpperCase() === 'C:';
           const isRecommended = recommended?.drive === disk.drive;
           const isSelected = selected === disk.drive;
 
@@ -78,6 +84,9 @@ export default function DiskSelector({ disks, selected, onSelect }: DiskSelector
                   {disk.fileSystem !== 'NTFS' && <span className="ml-2 text-danger">（{disk.fileSystem} 不支持）</span>}
                   {disk.isRemovable && <span className="ml-2 text-warning">（可移动磁盘）</span>}
                   {disk.isNetwork && <span className="ml-2 text-warning">（网络磁盘）</span>}
+                  {disk.drive.toUpperCase() === 'C:' && (
+                    <span className="ml-2 text-warning">（源盘不可作为迁移目标）</span>
+                  )}
                 </div>
               </div>
             </label>

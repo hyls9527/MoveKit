@@ -23,6 +23,10 @@ func TestMaskPath_NoUserProfile_Log(t *testing.T) {
 }
 
 func TestLogger_NewAndClose(t *testing.T) {
+	// Keep the logger fully hermetic: never write to the real user profile,
+	// so the test passes in restricted/CI environments too.
+	t.Setenv("APPDATA", t.TempDir())
+
 	log, err := NewLogger()
 	if err != nil {
 		t.Fatalf("NewLogger: %v", err)

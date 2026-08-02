@@ -170,10 +170,10 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 
 	if err != nil && IsCancelled() {
 		return &MoveKitError{
-			Code:    ErrCodeFileLocked,
-			Message: "迁移已取消",
+			Code:    ErrCodeCancelled,
+			Message: "迁移已取消，正在恢复已移动的文件",
 			Detail:  err.Error(),
-			Action:  "The migration was interrupted. You can retry or roll back.",
+			Action:  "已移动的文件会被自动恢复到原位置，请等待恢复完成后再重试。",
 		}
 	}
 

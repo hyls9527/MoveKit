@@ -8,13 +8,8 @@ import (
 	"unsafe"
 )
 
-// File operation flags.
+// Security information constants for Get/SetNamedSecurityInfoW.
 const (
-	MOVEFILE_COPY_ALLOWED     = 0x0002
-	MOVEFILE_REPLACE_EXISTING = 0x0001
-	FILE_FLAG_SEQUENTIAL_SCAN = 0x08000000
-
-	// Security information constants for Get/SetNamedSecurityInfoW.
 	SE_FILE_OBJECT            = 1
 	DACL_SECURITY_INFORMATION = 4
 )
@@ -30,7 +25,6 @@ type ACL struct {
 
 var (
 	procCopyFileExW = modkernel32.NewProc("CopyFileExW")
-	procMoveFileExW = modkernel32.NewProc("MoveFileExW")
 	procLocalFree   = modkernel32.NewProc("LocalFree")
 
 	modadvapi32               = syscall.NewLazyDLL("advapi32.dll")
@@ -135,29 +129,6 @@ func CopyFileWithACL(src, dst string, callback CopyProgressCallback) error {
 		return fmt.Errorf("SetNamedSecurityInfoW(%s): %v", dst, e)
 	}
 
-	return nil
-}
-
-// MoveFileEx moves a file or directory from src to dst.
-// flags is a combination of MOVEFILE_* constants.
-func MoveFileEx(src, dst string, flags uint32) error {
-	srcPtr, err := syscall.UTF16PtrFromString(src)
-	if err != nil {
-		return fmt.Errorf("utf16 src: %w", err)
-	}
-	dstPtr, err := syscall.UTF16PtrFromString(dst)
-	if err != nil {
-		return fmt.Errorf("utf16 dst: %w", err)
-	}
-
-	r1, _, e := procMoveFileExW.Call(
-		uintptr(unsafe.Pointer(srcPtr)),
-		uintptr(unsafe.Pointer(dstPtr)),
-		uintptr(flags),
-	)
-	if r1 == 0 {
-		return fmt.Errorf("MoveFileExW(%s -> %s): %w", src, dst, e)
-	}
 	return nil
 }
 

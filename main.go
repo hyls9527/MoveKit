@@ -4,6 +4,7 @@ import (
 	"embed"
 	"os"
 
+	"github.com/movekit/movekit/internal/migrate"
 	winsyscall "github.com/movekit/movekit/internal/syscall"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -13,7 +14,7 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-var currentVersion = "0.2.0"
+var currentVersion = migrate.Version
 
 func main() {
 	// Enforce single instance via named mutex.
