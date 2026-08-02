@@ -55,7 +55,7 @@ MoveKit 把这件事变成一次点击：选盘→确认→完成。迁移后回
 ### 环境要求
 
 - Go 1.22+
-- Node.js 18+
+- Node.js 22+
 - Wails v2 (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
 
 ### 开发模式
