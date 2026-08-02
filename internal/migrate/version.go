@@ -10,7 +10,7 @@ import (
 )
 
 // Version is the current version of the MoveKit migration engine.
-const Version = "0.2.1"
+const Version = "0.3.0"
 
 // githubReleasesLatestURL is the GitHub API endpoint for the latest release.
 // It is a variable so tests can point it at a local test server.
