@@ -184,7 +184,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.0"
+          go-version: "1.25.12"
           cache: true
 
       - uses: actions/setup-node@v4
@@ -208,6 +208,20 @@ jobs:
           $version = "${{ github.ref_name }}"
           wails build -webview2 embed -ldflags "-X main.currentVersion=$version"
         shell: pwsh
+
+      - name: Sign MoveKit.exe with Azure Trusted Signing
+        if: env.AZURE_CLIENT_ID != ''
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        uses: azure/trusted-signing-action@v0
+        with:
+          endpoint: https://eus.codesigning.azure.net
+          trusted-signing-account-name: ${{ vars.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.TRUSTED_SIGNING_PROFILE }}
+          files: build/bin/MoveKit.exe
+          file-digest: SHA256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
