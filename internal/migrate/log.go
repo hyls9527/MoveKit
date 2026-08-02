@@ -11,8 +11,8 @@ import (
 
 // Logger writes structured log entries to a dated file under %APPDATA%\MoveKit\logs\.
 type Logger struct {
-	mu   sync.Mutex
 	file *os.File
+	mu   sync.Mutex
 }
 
 // NewLogger creates a Logger that writes to %APPDATA%\MoveKit\logs\movekit-{date}.log.
@@ -24,14 +24,14 @@ func NewLogger() (*Logger, error) {
 	}
 
 	logDir := filepath.Join(appData, "MoveKit", "logs")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0750); err != nil { // #nosec G703 -- logDir derives from trusted env vars
 		return nil, fmt.Errorf("create log directory: %w", err)
 	}
 
 	date := time.Now().Format("2006-01-02")
 	logPath := filepath.Join(logDir, fmt.Sprintf("movekit-%s.log", date))
 
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600) // #nosec G304 G302 G703 -- logPath from %APPDATA%
 	if err != nil {
 		return nil, fmt.Errorf("open log file: %w", err)
 	}
@@ -75,7 +75,7 @@ func (l *Logger) write(level, format string, args ...interface{}) {
 	ts := time.Now().Format("2006-01-02 15:04:05.000")
 	msg := fmt.Sprintf(format, args...)
 	line := fmt.Sprintf("%s [%s] %s\n", ts, level, msg)
-	l.file.WriteString(line)
+	_, _ = l.file.WriteString(line) // log failures are non-critical
 }
 
 // maskPath replaces the user's profile directory with C:\Users\*** to avoid

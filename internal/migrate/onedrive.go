@@ -8,8 +8,8 @@ import (
 
 // OneDriveStatus holds the result of OneDrive Known Folder Move detection.
 type OneDriveStatus struct {
-	IsActive    bool     `json:"isActive"`
 	Folders     []string `json:"folders"`
+	IsActive    bool     `json:"isActive"`
 	HasGPOBlock bool     `json:"hasGPOBlock"`
 }
 

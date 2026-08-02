@@ -4,11 +4,12 @@ import (
 	"embed"
 	"os"
 
-	"github.com/movekit/movekit/internal/migrate"
-	winsyscall "github.com/movekit/movekit/internal/syscall"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+
+	"github.com/movekit/movekit/internal/migrate"
+	winsyscall "github.com/movekit/movekit/internal/syscall"
 )
 
 //go:embed all:frontend/dist

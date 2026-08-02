@@ -8,25 +8,25 @@ import (
 	"sync/atomic"
 )
 
-// cancelled is an atomic flag used to signal cancellation of an in-progress
+// canceled is an atomic flag used to signal cancellation of an in-progress
 // file move operation.
-var cancelled atomic.Int32
+var canceled atomic.Int32
 
 // CancelMigration sets the cancellation flag, causing any in-progress
 // cross-volume file move to stop after the current file completes.
 func CancelMigration() {
-	cancelled.Store(1)
+	canceled.Store(1)
 }
 
 // IsCancelled returns true if CancelMigration has been called.
 func IsCancelled() bool {
-	return cancelled.Load() != 0
+	return canceled.Load() != 0
 }
 
 // ResetCancellation clears the cancellation flag. Call this before starting
 // a new migration.
 func ResetCancellation() {
-	cancelled.Store(0)
+	canceled.Store(0)
 }
 
 // moveFilesSameVolume moves a directory on the same volume using os.Rename.
@@ -78,14 +78,14 @@ func moveFilesSameVolume(source, target string, onProgress func(ProgressInfo)) e
 
 // moveFilesCrossVolume moves files across different drive volumes by copying
 // each file individually and then deleting the source. Supports cancellation
-// via the atomic cancelled flag and reports progress through the callback.
+// via the atomic canceled flag and reports progress through the callback.
 func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder string, conflictMode ConflictMode) error {
 	ResetCancellation()
 
 	// Count total files for progress reporting.
 	var totalFiles int
 	var totalBytes int64
-	filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // intentional: skip files we cannot access during counting
 		}
@@ -117,7 +117,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 
 		// Check cancellation.
 		if IsCancelled() {
-			return fmt.Errorf("migration cancelled")
+			return fmt.Errorf("migration canceled")
 		}
 
 		relPath, err := filepath.Rel(src, path)
@@ -127,7 +127,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 		dstPath := filepath.Join(dst, relPath)
 
 		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0755)
+			return os.MkdirAll(dstPath, 0750)
 		}
 
 		// Handle file conflicts based on conflict mode.
@@ -150,6 +150,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 		}
 
 		// Remove source file after successful copy.
+		// #nosec G122 -- path originates from WalkDir on the migration source root
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove source %s: %w", relPath, err)
 		}
@@ -179,7 +180,7 @@ func moveFilesCrossVolume(src, dst string, onProgress ProgressCallback, folder s
 
 	// Clean up empty source directory tree after all files are moved.
 	if err == nil {
-		os.RemoveAll(src) // non-critical: empty dirs may remain on error
+		_ = os.RemoveAll(src) // non-critical: empty dirs may remain on error
 	}
 
 	return err

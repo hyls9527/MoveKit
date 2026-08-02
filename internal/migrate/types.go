@@ -18,10 +18,10 @@ type ProgressInfo struct {
 // ConflictInfo describes a file that exists at both source and target.
 type ConflictInfo struct {
 	RelativePath string `json:"relativePath"`
-	SrcSize      int64  `json:"srcSize"`
-	DstSize      int64  `json:"dstSize"`
 	SrcModTime   string `json:"srcModTime"`
 	DstModTime   string `json:"dstModTime"`
+	SrcSize      int64  `json:"srcSize"`
+	DstSize      int64  `json:"dstSize"`
 }
 
 // CloudProvider represents a detected cloud sync provider.
@@ -32,17 +32,17 @@ type CloudProvider struct {
 
 // MigrationState tracks the current state of an in-progress migration.
 type MigrationState struct {
+	StartTime  time.Time `json:"startTime"`
 	Status     string    `json:"status"`
 	Folder     string    `json:"folder"`
 	Source     string    `json:"source"`
 	Target     string    `json:"target"`
-	StartTime  time.Time `json:"startTime"`
 	FilesMoved int64     `json:"filesMoved"`
 }
 
 // UpdateInfo holds information about an available update.
 type UpdateInfo struct {
-	HasUpdate   bool   `json:"hasUpdate"`
 	NewVersion  string `json:"newVersion"`
 	DownloadURL string `json:"downloadURL"`
+	HasUpdate   bool   `json:"hasUpdate"`
 }

@@ -23,7 +23,7 @@ func backupPathFor(folder string) string {
 // SaveBackup persists a BackupRecord as JSON to %APPDATA%\MoveKit\backups\{folder}.json.
 func SaveBackup(b BackupRecord) error {
 	dir := backupsDir()
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(b, "", "  ")
@@ -37,6 +37,7 @@ func SaveBackup(b BackupRecord) error {
 // LoadBackup reads a BackupRecord from disk for the given folder name.
 func LoadBackup(folder string) (*BackupRecord, error) {
 	path := backupPathFor(folder)
+	// #nosec G304 -- path is built from %APPDATA% and a known folder name
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -67,6 +68,7 @@ func LoadAllBackups() ([]BackupRecord, error) {
 		if filepath.Ext(entry.Name()) != ".json" {
 			continue
 		}
+		// #nosec G304 -- path is built from %APPDATA% and directory entries
 		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
 		if err != nil {
 			continue

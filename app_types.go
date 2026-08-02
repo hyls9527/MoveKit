@@ -7,27 +7,27 @@ type FolderInfo struct {
 	GUID       string `json:"guid"`
 	SourcePath string `json:"sourcePath"`
 	TargetPath string `json:"targetPath"`
+	Status     string `json:"status"`    // "default" | "migrated" | "junction_broken"
 	SizeBytes  int64  `json:"sizeBytes"` // -1 means "could not calculate"
 	FileCount  int    `json:"fileCount"`
-	Status     string `json:"status"` // "default" | "migrated" | "junction_broken"
 }
 
 type DiskInfo struct {
 	Drive        string `json:"drive"`
 	Label        string `json:"label"`
+	FileSystem   string `json:"fileSystem"`
 	TotalBytes   int64  `json:"totalBytes"`
 	FreeBytes    int64  `json:"freeBytes"`
 	IsFixedDrive bool   `json:"isFixedDrive"`
 	IsRemovable  bool   `json:"isRemovable"`
 	IsNetwork    bool   `json:"isNetwork"`
-	FileSystem   string `json:"fileSystem"`
 }
 
 type DurationEstimate struct {
+	EstimatedText      string `json:"estimatedText"`
+	EstimatedSec       int    `json:"estimatedSec"`
 	IsCrossVolume      bool   `json:"isCrossVolume"`
 	TargetIsFixedDrive bool   `json:"targetIsFixedDrive"`
-	EstimatedSec       int    `json:"estimatedSec"`
-	EstimatedText      string `json:"estimatedText"`
 }
 
 type ProgressInfo struct {
@@ -41,8 +41,8 @@ type ProgressInfo struct {
 }
 
 type OneDriveStatus struct {
-	IsActive    bool     `json:"isActive"`
 	Folders     []string `json:"folders"`
+	IsActive    bool     `json:"isActive"`
 	HasGPOBlock bool     `json:"hasGPOBlock"`
 }
 
@@ -54,10 +54,10 @@ type IntegrityIssue struct {
 
 type ConflictInfo struct {
 	RelativePath string `json:"relativePath"`
-	SrcSize      int64  `json:"srcSize"`
-	DstSize      int64  `json:"dstSize"`
 	SrcModTime   string `json:"srcModTime"`
 	DstModTime   string `json:"dstModTime"`
+	SrcSize      int64  `json:"srcSize"`
+	DstSize      int64  `json:"dstSize"`
 }
 
 type CloudProvider struct {
@@ -66,22 +66,22 @@ type CloudProvider struct {
 }
 
 type BackupRecord struct {
-	Version       int       `json:"version"`
+	CreatedAt     time.Time `json:"createdAt"`
 	Folder        string    `json:"folder"`
 	GUID          string    `json:"guid"`
 	OriginalPath  string    `json:"originalPath"`
 	NewPath       string    `json:"newPath"`
 	RegistryValue string    `json:"registryValue"`
-	CreatedAt     time.Time `json:"createdAt"`
 	Status        string    `json:"status"`
+	Version       int       `json:"version"`
 }
 
 type MigrationState struct {
+	StartTime  time.Time `json:"startTime"`
 	Status     string    `json:"status"`
 	Folder     string    `json:"folder"`
 	Source     string    `json:"source"`
 	Target     string    `json:"target"`
-	StartTime  time.Time `json:"startTime"`
 	FilesMoved int64     `json:"filesMoved"`
 }
 
@@ -96,16 +96,16 @@ type MoveKitError struct {
 func (e *MoveKitError) Error() string { return e.Message }
 
 type UpdateInfo struct {
-	HasUpdate   bool   `json:"hasUpdate"`
 	NewVersion  string `json:"newVersion"`
 	DownloadURL string `json:"downloadURL"`
+	HasUpdate   bool   `json:"hasUpdate"`
 }
 
 type MigrationStatus struct {
+	Error   *MoveKitError `json:"error"`
 	State   string        `json:"state"`
 	Folder  string        `json:"folder"`
 	Percent int           `json:"percent"`
-	Error   *MoveKitError `json:"error"`
 }
 
 type DiskDetail struct {

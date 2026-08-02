@@ -115,7 +115,7 @@ func main() {
 		failures++
 	} else {
 		log.Info("runtime verification test")
-		log.Close()
+		_ = log.Close()
 		fmt.Printf("  OK log written\n")
 	}
 
@@ -128,21 +128,21 @@ func main() {
 	tmpDir, _ := os.MkdirTemp("", "mvk_verify")
 	target := filepath.Join(tmpDir, "target")
 	link := filepath.Join(tmpDir, "link")
-	os.Mkdir(target, 0755)
-	os.Mkdir(link, 0755)
-	if err := sys.CreateJunction(link, target); err != nil {
-		fmt.Printf("  FAIL CreateJunction: %v\n", err)
+	_ = os.Mkdir(target, 0750)
+	_ = os.Mkdir(link, 0750)
+	if createErr := sys.CreateJunction(link, target); createErr != nil {
+		fmt.Printf("  FAIL CreateJunction: %v\n", createErr)
 		failures++
 	} else if !sys.IsJunction(link) {
 		fmt.Printf("  FAIL IsJunction=false\n")
 		failures++
-	} else if err := sys.DeleteJunction(link); err != nil {
-		fmt.Printf("  FAIL DeleteJunction: %v\n", err)
+	} else if deleteErr := sys.DeleteJunction(link); deleteErr != nil {
+		fmt.Printf("  FAIL DeleteJunction: %v\n", deleteErr)
 		failures++
 	} else {
 		fmt.Printf("  OK full roundtrip\n")
 	}
-	os.RemoveAll(tmpDir)
+	_ = os.RemoveAll(tmpDir)
 
 	// 14. Registry read/write
 	fmt.Println("\n[14] Registry read User Shell Folders")

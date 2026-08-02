@@ -21,9 +21,9 @@ import (
 // automatically bound to the frontend via Wails bindings.
 type App struct {
 	ctx        context.Context
+	statsCache sync.Map // path -> dirStats, caches DirStats results
 	mu         sync.Mutex
 	migrating  bool
-	statsCache sync.Map // path -> dirStats, caches DirStats results
 }
 
 type dirStats struct {
@@ -337,7 +337,7 @@ func (a *App) StartMigration(targetDrive string, conflictMode string) {
 			if migrate.IsCancelled() {
 				runtime.EventsEmit(a.ctx, "migration:done", map[string]interface{}{
 					"success": false,
-					"error":   "Migration was cancelled",
+					"error":   "Migration was canceled",
 				})
 				return
 			}
@@ -533,7 +533,7 @@ func (a *App) GetFirstRunFlag() bool {
 // SetFirstRunFlag writes the first-run flag to config.json.
 func (a *App) SetFirstRunFlag(firstRun bool) error {
 	dir := configDir()
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
 	}
 	cfg := configData{FirstRun: firstRun}

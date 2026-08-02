@@ -40,7 +40,6 @@ jobs:
       - uses: golangci/golangci-lint-action@v7
         with:
           version: v2.11.3
-          only-new-issues: true
           args: --timeout=5m
 
       - name: Install frontend dependencies

@@ -29,8 +29,8 @@ func CleanupTempJunctions() {
 		tempPath := sourcePath + ".movekit_tmp"
 		if _, err := os.Stat(tempPath); err == nil {
 			// Temp junction exists, try to remove it
-			Sys.Junction.DeleteJunction(tempPath)
-			os.Remove(tempPath)
+			_ = Sys.Junction.DeleteJunction(tempPath) // best-effort cleanup
+			_ = os.Remove(tempPath)                   // best-effort cleanup
 		}
 	}
 }
@@ -70,7 +70,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	if err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
-	defer log.Close()
+	defer func() { _ = log.Close() }()
 
 	log.Info("Starting migration of %s to %s", regValueName, targetDrive)
 
@@ -93,12 +93,12 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	actualSource := sourcePath
 	if Sys.Junction.IsJunction(sourcePath) {
 		log.Info("Source is already a junction, resolving real target")
-		junctionTarget, err := resolveJunctionTarget(sourcePath)
-		if err != nil {
+		junctionTarget, resolveErr := resolveJunctionTarget(sourcePath)
+		if resolveErr != nil {
 			return &MoveKitError{
 				Code:    ErrCodeJunctionFailed,
 				Message: "无法解析现有 Junction 目标",
-				Detail:  err.Error(),
+				Detail:  resolveErr.Error(),
 				Action:  "Check that the junction is not broken",
 			}
 		}
@@ -194,7 +194,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 		CreatedAt:     time.Now(),
 		Status:        "in_progress",
 	}
-	if err := saveBackup(backupPath, backup); err != nil {
+	if err = saveBackup(backupPath, backup); err != nil {
 		log.Error("Failed to save initial backup record: %v", err)
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
@@ -232,7 +232,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	log.Info("Moving files from %s to %s", maskPath(actualSource), maskPath(targetPath))
 	if Sys.Volume.IsCrossVolume(actualSource, targetPath) {
 		// Cross-volume: copy + delete.
-		if err := moveFilesCrossVolume(actualSource, targetPath, onProgress, regValueName, conflictMode); err != nil {
+		if err = moveFilesCrossVolume(actualSource, targetPath, onProgress, regValueName, conflictMode); err != nil {
 			log.Error("Cross-volume move failed: %v", err)
 			return err
 		}
@@ -244,7 +244,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 				onProgress(regValueName, pi.Phase, 0, 0, 0, 0)
 			}
 		}
-		if err := moveFilesSameVolume(actualSource, targetPath, svProgress); err != nil {
+		if err = moveFilesSameVolume(actualSource, targetPath, svProgress); err != nil {
 			log.Error("Same-volume move failed: %v", err)
 			return err
 		}
@@ -273,7 +273,7 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 	if !junctionCreated {
 		tempJunction := sourcePath + ".movekit_tmp"
 		// Clean up any leftover temp junction
-		os.Remove(tempJunction)
+		_ = os.Remove(tempJunction) // best-effort cleanup
 
 		// Create temp directory for junction
 		if mdErr := os.MkdirAll(tempJunction, 0700); mdErr != nil {
@@ -286,8 +286,8 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 		}
 
 		// Create junction at temp location
-		if err := Sys.Junction.CreateJunction(tempJunction, targetPath); err != nil {
-			os.Remove(tempJunction)
+		if err = Sys.Junction.CreateJunction(tempJunction, targetPath); err != nil {
+			_ = os.Remove(tempJunction) // best-effort cleanup
 			return &MoveKitError{
 				Code:    ErrCodeJunctionFailed,
 				Message: "无法创建临时 junction",
@@ -299,8 +299,8 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 		// Verify temp junction points correctly
 		resolved, resolveErr := resolveJunctionTarget(tempJunction)
 		if resolveErr != nil || !strings.EqualFold(resolved, targetPath) {
-			Sys.Junction.DeleteJunction(tempJunction)
-			os.Remove(tempJunction)
+			_ = Sys.Junction.DeleteJunction(tempJunction) // best-effort cleanup
+			_ = os.Remove(tempJunction)                   // best-effort cleanup
 			return &MoveKitError{
 				Code:    ErrCodeJunctionFailed,
 				Message: "Junction 验证失败",
@@ -312,13 +312,13 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 		// Ensure source directory doesn't exist (remove if it does)
 		if _, statErr := os.Stat(sourcePath); statErr == nil {
 			// Source exists but is not a junction (shouldn't happen after move)
-			os.Remove(sourcePath)
+			_ = os.Remove(sourcePath) // best-effort cleanup
 		}
 
 		// Atomic swap: rename temp junction to source path
 		if renameErr := os.Rename(tempJunction, sourcePath); renameErr != nil {
-			Sys.Junction.DeleteJunction(tempJunction)
-			os.Remove(tempJunction)
+			_ = Sys.Junction.DeleteJunction(tempJunction) // best-effort cleanup
+			_ = os.Remove(tempJunction)                   // best-effort cleanup
 			return &MoveKitError{
 				Code:    ErrCodeJunctionFailed,
 				Message: "Junction 替换失败",
@@ -357,7 +357,9 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 		log.Error("Failed to update Shell Folders: %v — rolling back User Shell Folders", regErr)
 		// Rollback the first write
 		if oldUserShell != "" {
-			Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, oldUserShell)
+			if rollbackErr := Sys.Registry.WriteString(sys.UserShellFoldersKey, regValueName, oldUserShell); rollbackErr != nil {
+				log.Warn("CRITICAL: failed to roll back User Shell Folders: %v", rollbackErr)
+			}
 		}
 		return &MoveKitError{
 			Code:    ErrCodeRegistryFailed,
@@ -392,13 +394,13 @@ func Migrate(regValueName, targetDrive string, onProgress ProgressCallback, conf
 // BackupRecord mirrors the structure from app_types.go but lives in the migrate package
 // to avoid circular imports.
 type BackupRecord struct {
-	Version       int       `json:"version"`
-	RegValueName  string    `json:"regValueName"`
+	CreatedAt     time.Time `json:"createdAt"`
 	OriginalPath  string    `json:"originalPath"`
 	NewPath       string    `json:"newPath"`
+	RegValueName  string    `json:"regValueName"`
 	RegistryValue string    `json:"registryValue"`
-	CreatedAt     time.Time `json:"createdAt"`
 	Status        string    `json:"status"`
+	Version       int       `json:"version"`
 }
 
 // backupFilePath returns the path to the backup JSON file for a given folder.

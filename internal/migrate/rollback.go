@@ -49,7 +49,7 @@ func Rollback(folderName string, onProgress ...RollbackProgressCallback) error {
 			}
 		}
 		// Remove the now-empty directory that hosted the junction.
-		os.Remove(rec.OriginalPath)
+		_ = os.Remove(rec.OriginalPath) // best-effort cleanup
 	}
 
 	// 3. Move files back from new location to original.
@@ -83,7 +83,7 @@ func Rollback(folderName string, onProgress ...RollbackProgressCallback) error {
 
 	// Ensure the parent of the original path exists.
 	parentDir := filepath.Dir(rec.OriginalPath)
-	if err := os.MkdirAll(parentDir, 0755); err != nil {
+	if err := os.MkdirAll(parentDir, 0750); err != nil {
 		return &MoveKitError{
 			Code:    ErrCodePermissionDenied,
 			Message: "无法创建回滚目标目录",
@@ -159,7 +159,7 @@ func Rollback(folderName string, onProgress ...RollbackProgressCallback) error {
 func rollbackCrossVolume(src, dst string, progress RollbackProgressCallback) error {
 	// Count total files for progress reporting
 	var totalFiles int
-	filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
 		}
@@ -181,7 +181,7 @@ func rollbackCrossVolume(src, dst string, progress RollbackProgressCallback) err
 		dstPath := filepath.Join(dst, relPath)
 
 		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0755)
+			return os.MkdirAll(dstPath, 0750)
 		}
 
 		// Copy file
@@ -190,6 +190,7 @@ func rollbackCrossVolume(src, dst string, progress RollbackProgressCallback) err
 		}
 
 		// Remove source
+		// #nosec G122 -- path originates from WalkDir on the rollback source root
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove source %s: %w", relPath, err)
 		}
@@ -212,6 +213,6 @@ func rollbackCrossVolume(src, dst string, progress RollbackProgressCallback) err
 	}
 
 	// Clean up empty source directory
-	os.RemoveAll(src)
+	_ = os.RemoveAll(src)
 	return nil
 }
