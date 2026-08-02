@@ -205,9 +205,18 @@ jobs:
           CGO_ENABLED: 1
           npm_config_legacy_peer_deps: true
         run: |
-          $version = "${{ github.ref_name }}"
-          wails build -webview2 embed -ldflags "-X main.currentVersion=$version"
+          wails build -webview2 embed
         shell: pwsh
+
+      - name: Verify version.go matches tag
+        shell: pwsh
+        run: |
+          $tagVersion = "${{ github.ref_name }}" -replace '^v',''
+          $goVersion = (Select-String -Path internal/migrate/version.go -Pattern 'const Version = "([^"]+)"').Matches[0].Groups[1].Value
+          if ($tagVersion -ne $goVersion) {
+            Write-Host "::error::Tag $tagVersion does not match version.go Version $goVersion"
+            exit 1
+          }
 
       - name: Sign MoveKit.exe with Azure Trusted Signing
         if: env.AZURE_CLIENT_ID != ''

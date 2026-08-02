@@ -74,27 +74,10 @@ type MigrationState struct {
 	FilesMoved int64     `json:"filesMoved"`
 }
 
-type MoveKitError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	Detail  string `json:"detail"`
-	Action  string `json:"action"`
-	Warning string `json:"warning,omitempty"` // Non-blocking informational warning
-}
-
-func (e *MoveKitError) Error() string { return e.Message }
-
 type UpdateInfo struct {
 	NewVersion  string `json:"newVersion"`
 	DownloadURL string `json:"downloadURL"`
 	HasUpdate   bool   `json:"hasUpdate"`
-}
-
-type MigrationStatus struct {
-	Error   *MoveKitError `json:"error"`
-	State   string        `json:"state"`
-	Folder  string        `json:"folder"`
-	Percent int           `json:"percent"`
 }
 
 type DiskDetail struct {

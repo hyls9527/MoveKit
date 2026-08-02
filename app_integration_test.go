@@ -206,9 +206,28 @@ func TestStartupIntegrityCheck_JunctionOKAndMismatch(t *testing.T) {
 }
 
 func TestMoveKitError_ErrorMethod(t *testing.T) {
-	err := &MoveKitError{Code: "X", Message: "hello", Detail: "d", Action: "a"}
+	err := &migrate.MoveKitError{Code: "X", Message: "hello", Detail: "d", Action: "a"}
 	if err.Error() != "hello" {
 		t.Errorf("Error() = %q, want %q", err.Error(), "hello")
+	}
+}
+
+func TestRollback_RejectsUnknownFolder(t *testing.T) {
+	app := NewApp()
+	for _, name := range []string{"..\\..\\evil", "Desktop.json", "", "{GUID}"} {
+		err := app.Rollback(name)
+		if err == nil {
+			t.Errorf("Rollback(%q) should be rejected", name)
+			continue
+		}
+		mkErr, ok := err.(*migrate.MoveKitError)
+		if !ok {
+			t.Errorf("Rollback(%q) error type = %T, want *migrate.MoveKitError", name, err)
+			continue
+		}
+		if mkErr.Code != "INVALID_FOLDER" {
+			t.Errorf("Rollback(%q) code = %q, want INVALID_FOLDER", name, mkErr.Code)
+		}
 	}
 }
 
