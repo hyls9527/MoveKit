@@ -20,10 +20,11 @@ import (
 // App is the main Wails application struct. All exported methods are
 // automatically bound to the frontend via Wails bindings.
 type App struct {
-	ctx        context.Context
-	statsCache sync.Map // path -> dirStats, caches DirStats results
-	mu         sync.Mutex
-	migrating  bool
+	ctx         context.Context
+	statsCache  sync.Map // path -> dirStats, caches DirStats results
+	migrationWG sync.WaitGroup
+	mu          sync.Mutex
+	migrating   bool
 }
 
 type dirStats struct {
@@ -92,7 +93,12 @@ func (a *App) startup(ctx context.Context) {
 }
 
 // shutdown is called by Wails when the application shuts down.
-func (a *App) shutdown(ctx context.Context) {}
+func (a *App) shutdown(ctx context.Context) {
+	// If a migration is still running when the app closes, request
+	// cancellation and wait for its rollback to finish before exiting.
+	migrate.CancelMigration()
+	a.migrationWG.Wait()
+}
 
 // ---------------------------------------------------------------------------
 // Health & Version
@@ -315,6 +321,7 @@ func (a *App) StartMigration(targetDrive string, conflictMode string) {
 		return
 	}
 	a.migrating = true
+	a.migrationWG.Add(1)
 	a.mu.Unlock()
 
 	go func() {
@@ -322,6 +329,7 @@ func (a *App) StartMigration(targetDrive string, conflictMode string) {
 			a.mu.Lock()
 			a.migrating = false
 			a.mu.Unlock()
+			a.migrationWG.Done()
 		}()
 
 		migrate.ResetCancellation()
@@ -420,6 +428,14 @@ func (a *App) CancelMigration() {
 
 // Rollback reverses the migration for a specific folder.
 func (a *App) Rollback(regValueName string) error {
+	if !isKnownFolderName(regValueName) {
+		return &migrate.MoveKitError{
+			Code:    "INVALID_FOLDER",
+			Message: "未知的文件夹名称，无法回滚",
+			Detail:  fmt.Sprintf("received %q", regValueName),
+			Action:  "请从已迁移文件夹列表中选择",
+		}
+	}
 	return migrate.Rollback(regValueName, func(phase string, filesMoved, totalFiles int) {
 		runtime.EventsEmit(a.ctx, "rollback:progress", map[string]interface{}{
 			"phase":      phase,
@@ -427,6 +443,17 @@ func (a *App) Rollback(regValueName string) error {
 			"totalFiles": totalFiles,
 		})
 	})
+}
+
+// isKnownFolderName reports whether name is one of the known shell folders.
+// It guards Wails-bound entry points against arbitrary path-like input.
+func isKnownFolderName(name string) bool {
+	for _, f := range folders.AllFolders {
+		if f.RegValueName == name {
+			return true
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------------------

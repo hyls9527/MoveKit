@@ -1,3 +1,7 @@
+// Hand-written mirror of the Wails-generated bindings (frontend/wailsjs/go/models.ts)
+// used for the no-Wails dev/mock fallback. Keep field names in sync with the Go
+// types in app_types.go when adding or renaming fields.
+
 export interface FolderInfo {
   name: string;
   guid: string;
