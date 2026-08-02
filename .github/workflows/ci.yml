@@ -209,20 +209,6 @@ jobs:
           wails build -webview2 embed -ldflags "-X main.currentVersion=$version"
         shell: pwsh
 
-      - name: Sign MoveKit.exe with Azure Trusted Signing
-        if: ${{ secrets.AZURE_CLIENT_ID != '' }}
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        uses: azure/trusted-signing-action@v0
-        with:
-          endpoint: https://eus.codesigning.azure.net
-          trusted-signing-account-name: ${{ vars.TRUSTED_SIGNING_ACCOUNT }}
-          certificate-profile-name: ${{ vars.TRUSTED_SIGNING_PROFILE }}
-          files: build/bin/MoveKit.exe
-          file-digest: SHA256
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
