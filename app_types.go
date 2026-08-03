@@ -79,11 +79,3 @@ type UpdateInfo struct {
 	DownloadURL string `json:"downloadURL"`
 	HasUpdate   bool   `json:"hasUpdate"`
 }
-
-type DiskDetail struct {
-	Drive        string `json:"drive"`
-	Label        string `json:"label"`
-	IsFixedDrive bool   `json:"isFixedDrive"`
-	FreeBytes    int64  `json:"freeBytes"`
-	TotalBytes   int64  `json:"totalBytes"`
-}
