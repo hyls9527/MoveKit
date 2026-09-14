@@ -1,11 +1,11 @@
 module github.com/hyls9527/MoveKit
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/wailsapp/wails/v2 v2.12.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 )
 
 require (
